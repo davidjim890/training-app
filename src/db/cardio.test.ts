@@ -72,6 +72,16 @@ describe("cardio log", () => {
     expect(await db.cardioSessions.count()).toBe(1);
   });
 
+  it("keeps incline for treadmill only, including 0%", async () => {
+    const tm = await addCardio(db, { date: "2026-09-10", kind: "treadmill", durationMin: 20, intensity: 1, inclinePct: 12.34 });
+    const flat = await addCardio(db, { date: "2026-09-10", kind: "treadmill", durationMin: 20, intensity: 1, inclinePct: 0 });
+    const run = await addCardio(db, { date: "2026-09-10", kind: "run", durationMin: 20, intensity: 1, inclinePct: 5 });
+    expect((await db.cardioSessions.get(tm))!.inclinePct).toBe(12.3);
+    expect((await db.cardioSessions.get(flat))!.inclinePct).toBe(0);
+    expect((await db.cardioSessions.get(run))!.inclinePct).toBeUndefined();
+    expect(validateCardioDraft({ date: "2026-09-10", kind: "treadmill", durationMin: 20, intensity: 1, inclinePct: 50 })).toHaveLength(1);
+  });
+
   it("rejects an invalid draft", async () => {
     await expect(addCardio(db, { date: "2026-09-10", kind: "run", durationMin: 0, intensity: 1 })).rejects.toThrow(/Duration/);
   });

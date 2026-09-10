@@ -11,6 +11,8 @@ export interface CardioDraft {
   kind: CardioKind;
   durationMin: number;
   distanceKm?: number;
+  /** Only stored when kind is "treadmill". */
+  inclinePct?: number;
   intensity: CardioIntensity;
   notes?: string;
 }
@@ -18,6 +20,7 @@ export interface CardioDraft {
 export const CARDIO_LIMITS = {
   durationMin: { min: 1, max: 600 },
   distanceKm: { min: 0, max: 200 },
+  inclinePct: { min: 0, max: 40 },
 } as const;
 
 export function validateCardioDraft(d: CardioDraft): string[] {
@@ -27,6 +30,8 @@ export function validateCardioDraft(d: CardioDraft): string[] {
     problems.push(`Duration must be between ${CARDIO_LIMITS.durationMin.min} and ${CARDIO_LIMITS.durationMin.max} minutes.`);
   if (d.distanceKm !== undefined && !(d.distanceKm >= CARDIO_LIMITS.distanceKm.min && d.distanceKm <= CARDIO_LIMITS.distanceKm.max))
     problems.push("Distance looks wrong.");
+  if (d.kind === "treadmill" && d.inclinePct !== undefined && !(d.inclinePct >= CARDIO_LIMITS.inclinePct.min && d.inclinePct <= CARDIO_LIMITS.inclinePct.max))
+    problems.push(`Incline must be between ${CARDIO_LIMITS.inclinePct.min} and ${CARDIO_LIMITS.inclinePct.max}%.`);
   return problems;
 }
 
@@ -41,6 +46,8 @@ export async function addCardio(db: TrainingDb, draft: CardioDraft): Promise<num
     intensity: draft.intensity,
     loggedAt: new Date().toISOString(),
     ...(draft.distanceKm !== undefined && draft.distanceKm > 0 ? { distanceKm: Math.round(draft.distanceKm * 100) / 100 } : {}),
+    // 0% is a real treadmill setting, so it's kept; other kinds never carry an incline.
+    ...(draft.kind === "treadmill" && draft.inclinePct !== undefined ? { inclinePct: Math.round(draft.inclinePct * 10) / 10 } : {}),
     ...(notes ? { notes } : {}),
   });
 }

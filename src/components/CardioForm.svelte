@@ -10,7 +10,7 @@
   let { onsaved, onclose }: { onsaved: () => void; onclose: () => void } = $props();
 
   let draft = $state<CardioDraft>(
-    untrack(() => ({ date: new Date().toISOString().slice(0, 10), kind: "run", durationMin: 30, distanceKm: 0, intensity: 1, notes: "" }))
+    untrack(() => ({ date: new Date().toISOString().slice(0, 10), kind: "run", durationMin: 30, distanceKm: 0, inclinePct: 0, intensity: 1, notes: "" }))
   );
   let intensity = $state<CardioIntensity | undefined>(1);
   let problems = $state<string[]>([]);
@@ -51,6 +51,9 @@
       </label>
       <Stepper label="Duration (min)" bind:value={draft.durationMin} min={CARDIO_LIMITS.durationMin.min} max={CARDIO_LIMITS.durationMin.max} step={5} />
       <Stepper label="Distance (km, optional)" bind:value={draft.distanceKm as number} min={0} max={CARDIO_LIMITS.distanceKm.max} step={0.5} />
+      {#if draft.kind === "treadmill"}
+        <Stepper label="Incline (%)" bind:value={draft.inclinePct as number} min={CARDIO_LIMITS.inclinePct.min} max={CARDIO_LIMITS.inclinePct.max} step={0.5} />
+      {/if}
       <p class="small muted" style="margin:0">Intensity</p>
       <Choice bind:value={intensity} options={CARDIO_INTENSITY_LABELS} label="Intensity" />
       <label>

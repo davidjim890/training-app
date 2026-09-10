@@ -153,7 +153,7 @@ export interface VolumeLandmarkRecord {
 // Cardio — a standalone log, not part of the block/session structure
 // ---------------------------------------------------------------------------
 
-export const CARDIO_KINDS = ["run", "bike", "row", "swim", "walk", "stairs", "elliptical", "other"] as const;
+export const CARDIO_KINDS = ["run", "treadmill", "bike", "row", "swim", "walk", "stairs", "elliptical", "other"] as const;
 export type CardioKind = (typeof CARDIO_KINDS)[number];
 
 /** 0 easy (conversational), 1 moderate, 2 hard. */
@@ -167,6 +167,8 @@ export interface CardioSession {
   kind: CardioKind;
   durationMin: number;
   distanceKm?: number;
+  /** Treadmill only: incline in percent. */
+  inclinePct?: number;
   intensity: CardioIntensity;
   notes?: string;
   /** ISO datetime when the row was written. */

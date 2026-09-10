@@ -42,7 +42,7 @@
           <div class="grow">
             <strong>{r.kind}</strong> <span class="muted">· {fmtDate(r.date)}</span>
             <div class="small">
-              {r.durationMin} min{r.distanceKm ? ` · ${r.distanceKm} km` : ""} · {CARDIO_INTENSITY_LABELS[r.intensity].toLowerCase()}
+              {r.durationMin} min{r.distanceKm ? ` · ${r.distanceKm} km` : ""}{r.inclinePct !== undefined ? ` · ${r.inclinePct}% incline` : ""} · {CARDIO_INTENSITY_LABELS[r.intensity].toLowerCase()}
             </div>
             {#if r.notes}<div class="small muted">{r.notes}</div>{/if}
           </div>
