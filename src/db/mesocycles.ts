@@ -113,3 +113,36 @@ export function emptyMesocycleDraft(today = new Date()): MesocycleDraft {
     days: [{ name: "Day 1", exercises: [] }],
   };
 }
+
+/** How much logged data hangs off a block — shown before deleting it. */
+export async function mesocycleFootprint(db: TrainingDb, mesocycleId: number): Promise<{ sessions: number; sets: number }> {
+  const sessionIds = await db.sessions.where("mesocycleId").equals(mesocycleId).primaryKeys();
+  const slotIds = await db.sessionExercises.where("sessionId").anyOf(sessionIds).primaryKeys();
+  const sets = await db.sets.where("sessionExerciseId").anyOf(slotIds).count();
+  return { sessions: sessionIds.length, sets };
+}
+
+/**
+ * Delete a block and everything under it: template days and their exercises,
+ * sessions, session exercises, sets, and feedback. Exercises themselves are
+ * untouched. One transaction, so it's all or nothing.
+ */
+export async function deleteMesocycle(db: TrainingDb, mesocycleId: number): Promise<void> {
+  await db.transaction(
+    "rw",
+    [db.mesocycles, db.mesocycleDays, db.mesocycleDayExercises, db.sessions, db.sessionExercises, db.sets, db.muscleFeedback],
+    async () => {
+      const dayIds = await db.mesocycleDays.where("mesocycleId").equals(mesocycleId).primaryKeys();
+      const sessionIds = await db.sessions.where("mesocycleId").equals(mesocycleId).primaryKeys();
+      const slotIds = await db.sessionExercises.where("sessionId").anyOf(sessionIds).primaryKeys();
+
+      await db.sets.where("sessionExerciseId").anyOf(slotIds).delete();
+      await db.muscleFeedback.where("sessionId").anyOf(sessionIds).delete();
+      await db.sessionExercises.bulkDelete(slotIds);
+      await db.sessions.bulkDelete(sessionIds);
+      await db.mesocycleDayExercises.where("mesocycleDayId").anyOf(dayIds).delete();
+      await db.mesocycleDays.bulkDelete(dayIds);
+      await db.mesocycles.delete(mesocycleId);
+    }
+  );
+}

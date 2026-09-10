@@ -5,6 +5,7 @@
 <script lang="ts">
   import { liveQuery } from "dexie";
   import { db } from "../db";
+  import { deleteMesocycle, mesocycleFootprint } from "../db/mesocycles";
   import { planWeek, type WeekPlan } from "../db/planning";
   import { currentWeek, sessionStatusesForWeek, startSession } from "../db/sessions";
   import { isDeloadWeek, targetRirForWeek } from "../lib/progression";
@@ -44,6 +45,22 @@
       onOpenSession(await startSession(db, { mesocycleId, weekNum: week, mesocycleDayId: dayId }));
     } catch (e) {
       error = (e as Error).message;
+    }
+  }
+
+  let deleting = $state(false);
+  async function remove() {
+    const m = $meso;
+    if (!m) return;
+    const { sessions, sets } = await mesocycleFootprint(db, mesocycleId);
+    const what = sessions === 0 ? "It has no logged sessions." : `That includes ${sessions} session${sessions === 1 ? "" : "s"} and ${sets} logged set${sets === 1 ? "" : "s"}.`;
+    if (!confirm(`Delete "${m.name}"? ${what} This can't be undone.`)) return;
+    deleting = true;
+    try {
+      await deleteMesocycle(db, mesocycleId);
+      onBack();
+    } finally {
+      deleting = false;
     }
   }
 
@@ -95,6 +112,10 @@
         {/each}
       </div>
     {/if}
+
+    <div class="danger-zone">
+      <button type="button" class="btn danger block" onclick={remove} disabled={deleting}>Delete block</button>
+    </div>
   {:else}
     <p class="muted">Loading…</p>
   {/if}
@@ -102,4 +123,5 @@
 
 <style>
   .tabular { font-variant-numeric: tabular-nums; }
+  .danger-zone { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
 </style>

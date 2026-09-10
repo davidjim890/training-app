@@ -3,11 +3,15 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TrainingDb } from "./index";
 import {
   createMesocycle,
+  deleteMesocycle,
   emptyMesocycleDraft,
+  mesocycleFootprint,
   listMesocycles,
   validateMesocycleDraft,
   type MesocycleDraft,
 } from "./mesocycles";
+import { savePreSessionFeedback } from "./feedback";
+import { logSet, startSession } from "./sessions";
 
 let db: TrainingDb;
 beforeEach(() => {
@@ -107,5 +111,44 @@ describe("emptyMesocycleDraft", () => {
     const d = emptyMesocycleDraft(new Date("2026-09-10T12:00:00Z"));
     expect(d).toMatchObject({ numWeeks: 5, startingRir: 3, startDate: "2026-09-10" });
     expect(d.days).toHaveLength(1);
+  });
+});
+
+describe("deleteMesocycle", () => {
+  it("removes the block and everything under it, leaving other blocks and exercises alone", async () => {
+    const a = await createMesocycle(db, await validDraft());
+    const bDraft = await validDraft();
+    bDraft.name = "Keep me";
+    const b = await createMesocycle(db, bDraft);
+
+    // Put real data under block A: a session with sets and feedback
+    const dayA = (await db.mesocycleDays.where("mesocycleId").equals(a).first())!.id;
+    const sid = await startSession(db, { mesocycleId: a, weekNum: 1, mesocycleDayId: dayA });
+    const slot = (await db.sessionExercises.where("sessionId").equals(sid).first())!;
+    await logSet(db, slot.id, { weight: 60, reps: 8, actualRir: 2 });
+    await logSet(db, slot.id, { weight: 60, reps: 8, actualRir: 1 });
+    await savePreSessionFeedback(db, sid, { chest: 1 });
+    expect(await mesocycleFootprint(db, a)).toEqual({ sessions: 1, sets: 2 });
+
+    const exercisesBefore = await db.exercises.count();
+    await deleteMesocycle(db, a);
+
+    expect(await db.mesocycles.get(a)).toBeUndefined();
+    expect(await db.mesocycleDays.where("mesocycleId").equals(a).count()).toBe(0);
+    expect(await db.sessions.where("mesocycleId").equals(a).count()).toBe(0);
+    expect(await db.sessionExercises.count()).toBe(0);
+    expect(await db.sets.count()).toBe(0);
+    expect(await db.muscleFeedback.count()).toBe(0);
+    expect(await db.mesocycleDayExercises.count()).toBe(3); // block B's three slots survive
+
+    expect((await db.mesocycles.get(b))!.name).toBe("Keep me");
+    expect(await db.mesocycleDays.where("mesocycleId").equals(b).count()).toBe(2);
+    expect(await db.exercises.count()).toBe(exercisesBefore);
+  });
+
+  it("is a no-op for an unknown id", async () => {
+    await createMesocycle(db, await validDraft());
+    await deleteMesocycle(db, 999);
+    expect(await db.mesocycles.count()).toBe(1);
   });
 });
