@@ -96,6 +96,17 @@ named and centralized, not scattered as magic numbers.
 - **Thumb-friendly UI.** This is used mid-set, one-handed, sweaty. Big tap
   targets, minimal typing, numeric inputs over free text.
 
+## Deployment
+
+- Repo: https://github.com/davidjim890/training-app (public — free GitHub
+  Pages requires it; no training data is ever committed, only code).
+- Live: https://davidjim890.github.io/training-app/
+- `.github/workflows/deploy.yml` runs check + tests + build and publishes
+  `dist/` on every push to `main`. The build sets `BASE_PATH=/training-app/`,
+  which `vite.config.ts` uses for Vite's `base` and the manifest scope.
+  Locally the base stays `/`.
+- Install on iPhone: open the live URL in Safari → Share → Add to Home Screen.
+
 ## Current state
 
 Feature-complete for a first real block. `dexie` and `vite-plugin-pwa` are
