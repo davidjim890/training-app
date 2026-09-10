@@ -8,7 +8,6 @@
   import { db } from "../db";
   import { exportBackup, importBackup, parseBackup, serializeBackup } from "../db/backup";
 
-  let { onBack }: { onBack: () => void } = $props();
 
   const counts = liveQuery(async () => ({
     blocks: await db.mesocycles.count(),
@@ -74,9 +73,6 @@
 </script>
 
 <div class="page stack">
-  <div class="row between">
-    <button type="button" class="btn ghost" onclick={onBack}>← Home</button>
-  </div>
   <h1>Settings</h1>
 
   <section class="card stack">

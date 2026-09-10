@@ -12,6 +12,7 @@
   --danger-bg: #fdecea;
   --tap: 48px;
   --radius: 12px;
+  --tab-h: 56px;
 
   color-scheme: light dark;
   font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -40,7 +41,8 @@
 body {
   margin: 0;
   background: var(--bg);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Leave room for the fixed tab bar. */
+  padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
 }
 
 h1, h2, h3 { margin: 0 0 8px; line-height: 1.2; }
@@ -105,13 +107,18 @@ label > span { display: block; font-size: 0.875rem; color: var(--muted); margin-
 }
 .error ul { margin: 0; padding-left: 18px; }
 
-/* Sticky action bar at the bottom, within thumb reach. */
+/* Sticky action bar just above the tab bar, within thumb reach. */
 .actions {
   position: sticky;
-  bottom: 0;
-  padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+  bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
+  padding: 12px 0;
   background: var(--bg);
   border-top: 1px solid var(--border);
+}
+/* Inside a full-screen overlay there's no tab bar to clear. */
+.overlay .actions {
+  bottom: 0;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 /* Full-screen overlay for pickers. */

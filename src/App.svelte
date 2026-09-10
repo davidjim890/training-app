@@ -6,6 +6,9 @@
 -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import TabBar, { type Tab } from "./components/TabBar.svelte";
+  import { db } from "./db";
+  import { resolveTrainTarget } from "./db/sessions";
   import Block from "./screens/Block.svelte";
   import Home from "./screens/Home.svelte";
   import MesocycleBuilder from "./screens/MesocycleBuilder.svelte";
@@ -39,6 +42,27 @@
     else go(HOME, { replace: true });
   }
 
+  const activeTab = $derived<Tab>(
+    screen.name === "settings" ? "settings" : screen.name === "block" || screen.name === "session" ? "train" : "blocks"
+  );
+
+  async function selectTab(tab: Tab) {
+    if (tab === "blocks") {
+      if (screen.name !== "home") go(HOME);
+    } else if (tab === "settings") {
+      if (screen.name !== "settings") go({ name: "settings" });
+    } else {
+      const t = await resolveTrainTarget(db);
+      if (t.kind === "session" && !(screen.name === "session" && screen.sessionId === t.sessionId)) {
+        go({ name: "session", sessionId: t.sessionId, mesocycleId: t.mesocycleId });
+      } else if (t.kind === "block" && !(screen.name === "block" && screen.mesocycleId === t.mesocycleId)) {
+        go({ name: "block", mesocycleId: t.mesocycleId });
+      } else if (t.kind === "none" && screen.name !== "home") {
+        go(HOME); // nothing to train yet: the list is where you create a block
+      }
+    }
+  }
+
   onMount(() => {
     history.replaceState({ screen: HOME, depth: 0 }, "");
     const onPop = (e: PopStateEvent) => {
@@ -50,13 +74,9 @@
 </script>
 
 {#if screen.name === "home"}
-  <Home
-    onNewBlock={() => go({ name: "builder" })}
-    onOpenBlock={(mesocycleId) => go({ name: "block", mesocycleId })}
-    onSettings={() => go({ name: "settings" })}
-  />
+  <Home onNewBlock={() => go({ name: "builder" })} onOpenBlock={(mesocycleId) => go({ name: "block", mesocycleId })} />
 {:else if screen.name === "settings"}
-  <Settings onBack={back} />
+  <Settings />
 {:else if screen.name === "builder"}
   <!-- After saving, replace the builder entry so back goes home, not to an empty form. -->
   <MesocycleBuilder onSaved={(mesocycleId) => go({ name: "block", mesocycleId }, { replace: true })} onCancel={back} />
@@ -70,3 +90,5 @@
     <Session sessionId={screen.sessionId} onBack={back} />
   {/key}
 {/if}
+
+<TabBar active={activeTab} onselect={selectTab} />

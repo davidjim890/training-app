@@ -123,7 +123,10 @@ configured (autoUpdate service worker, manifest + icons in `public/`).
 - UI (`src/screens/`): Home, mesocycle builder + exercise picker, Block (week
   tabs, day status, this week's per-muscle plan with rationale), Session (the
   gym screen), pre/post feedback prompts, Settings (export/import backup).
-  No router — `App.svelte` holds a `screen` state value.
+  No router — `App.svelte` holds a `screen` state value mirrored into
+  browser history (so the iOS edge swipe works) plus a bottom `TabBar`
+  (Train / Blocks / Settings). Train resolves via `resolveTrainTarget`:
+  in-progress session → active block → planned block → Blocks list.
 
 Known open questions: MEV is unread (volume can drop to 0 after joint pain);
 RIR ramp rounding on 4/6-week blocks; `planNextWeek` past the final week.

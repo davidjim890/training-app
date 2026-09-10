@@ -8,6 +8,7 @@ import {
   deleteSet,
   getSessionView,
   logSet,
+  resolveTrainTarget,
   sessionStatusesForWeek,
   startSession,
   topSet,
@@ -156,5 +157,23 @@ describe("topSet", () => {
     const mk = (weight: number, reps: number) => ({ id: 0, sessionExerciseId: 0, setIndex: 0, weight, reps, actualRir: 2, completedAt: "" });
     expect(topSet([mk(80, 10), mk(85, 6), mk(85, 8)])).toMatchObject({ weight: 85, reps: 8 });
     expect(topSet([])).toBeUndefined();
+  });
+});
+
+describe("resolveTrainTarget", () => {
+  it("prefers an in-progress session, then the active block, then a planned one", async () => {
+    // Fresh block is "planned"
+    expect(await resolveTrainTarget(db)).toEqual({ kind: "block", mesocycleId });
+
+    const sid = await startSession(db, { mesocycleId, weekNum: 1, mesocycleDayId: dayIds[0] });
+    expect(await resolveTrainTarget(db)).toEqual({ kind: "session", sessionId: sid, mesocycleId });
+
+    await completeSession(db, sid);
+    expect(await resolveTrainTarget(db)).toEqual({ kind: "block", mesocycleId }); // now active
+  });
+
+  it("is none with no blocks at all", async () => {
+    await db.mesocycles.clear();
+    expect(await resolveTrainTarget(db)).toEqual({ kind: "none" });
   });
 });

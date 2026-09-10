@@ -3,7 +3,7 @@
   import { db } from "../db";
   import { listMesocycles } from "../db/mesocycles";
 
-  let { onNewBlock, onOpenBlock, onSettings }: { onNewBlock: () => void; onOpenBlock: (mesocycleId: number) => void; onSettings: () => void } = $props();
+  let { onNewBlock, onOpenBlock }: { onNewBlock: () => void; onOpenBlock: (mesocycleId: number) => void } = $props();
 
   // liveQuery re-runs whenever the tables it read from change, so this list
   // updates by itself after the builder saves. The `$` prefix in the markup
@@ -12,10 +12,7 @@
 </script>
 
 <div class="page stack">
-  <div class="row between">
-    <h1>Training</h1>
-    <button type="button" class="btn ghost" onclick={onSettings}>Settings</button>
-  </div>
+  <h1>Blocks</h1>
 
   {#if $mesocycles === undefined}
     <p class="muted">Loading…</p>

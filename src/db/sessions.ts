@@ -186,3 +186,31 @@ export function topSet(sets: WorkSet[]): WorkSet | undefined {
     undefined
   );
 }
+
+// ---------------------------------------------------------------------------
+// "Train" shortcut
+// ---------------------------------------------------------------------------
+
+export type TrainTarget =
+  | { kind: "session"; sessionId: number; mesocycleId: number }
+  | { kind: "block"; mesocycleId: number }
+  | { kind: "none" };
+
+/**
+ * Where the Train tab should land: an in-progress session if there is one,
+ * else the block you're working through (active first, then the most
+ * recently planned), else nowhere.
+ */
+export async function resolveTrainTarget(db: TrainingDb): Promise<TrainTarget> {
+  const inProgress = await db.sessions.filter((s) => s.status === "in_progress").sortBy("startedAt");
+  const latest = inProgress.at(-1);
+  if (latest) return { kind: "session", sessionId: latest.id, mesocycleId: latest.mesocycleId };
+
+  const active = await db.mesocycles.where("status").equals("active").first();
+  if (active) return { kind: "block", mesocycleId: active.id };
+
+  const planned = await db.mesocycles.where("status").equals("planned").reverse().sortBy("startDate");
+  if (planned[0]) return { kind: "block", mesocycleId: planned[0].id };
+
+  return { kind: "none" };
+}
