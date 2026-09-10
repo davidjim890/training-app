@@ -9,8 +9,8 @@
   import Choice from "./Choice.svelte";
 
   type Props =
-    | { mode: "pre"; muscles: MuscleGroup[]; onsave: (a: Record<MuscleGroup, Soreness>) => void; onskip: () => void }
-    | { mode: "post"; muscles: MuscleGroup[]; onsave: (a: Record<MuscleGroup, PostSessionAnswers>) => void; onskip: () => void };
+    | { mode: "pre"; muscles: MuscleGroup[]; onsave: (a: Record<MuscleGroup, Soreness>) => void; onskip: () => void; onback: () => void }
+    | { mode: "post"; muscles: MuscleGroup[]; onsave: (a: Record<MuscleGroup, PostSessionAnswers>) => void; onskip: () => void; onback: () => void };
   let props: Props = $props();
 
   let soreness = $state<Partial<Record<MuscleGroup, Soreness>>>({});
@@ -33,6 +33,9 @@
 
 <div class="overlay">
   <div class="page stack">
+    <div class="row between">
+      <button type="button" class="btn ghost" onclick={props.onback}>← {props.mode === "pre" ? "Block" : "Session"}</button>
+    </div>
     <h1>{props.mode === "pre" ? "Before you start" : "How did it go?"}</h1>
     <p class="muted small">
       {props.mode === "pre"

@@ -178,11 +178,12 @@
     muscles={$feedback.muscles}
     onsave={async (a) => { await savePreSessionFeedback(db, sessionId, a); preDismissed = true; }}
     onskip={() => (preDismissed = true)}
+    onback={onBack}
   />
 {/if}
 
 {#if showPost && $feedback}
-  <FeedbackPrompt mode="post" muscles={$feedback.muscles} onsave={finishWithFeedback} onskip={finishWithoutFeedback} />
+  <FeedbackPrompt mode="post" muscles={$feedback.muscles} onsave={finishWithFeedback} onskip={finishWithoutFeedback} onback={() => (showPost = false)} />
 {/if}
 
 <style>
