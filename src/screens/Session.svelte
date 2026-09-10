@@ -9,7 +9,7 @@
   import FeedbackPrompt from "../components/FeedbackPrompt.svelte";
   import Stepper from "../components/Stepper.svelte";
   import { db } from "../db";
-  import { feedbackStage, getSessionFeedback, musclesInSession, savePostSessionFeedback, savePreSessionFeedback } from "../db/feedback";
+  import { dismissPreFeedback, feedbackStage, getSessionFeedback, musclesInSession, savePostSessionFeedback, savePreSessionFeedback } from "../db/feedback";
   import { completeSession, deleteSet, getSessionView, logSet, topSet, type SessionExerciseView } from "../db/sessions";
   import { PLATE_INCREMENT, isDeloadWeek, suggestLoad } from "../lib/progression";
 
@@ -25,7 +25,9 @@
   const stage = $derived($feedback ? feedbackStage($feedback.muscles, $feedback.rows) : null);
   let preDismissed = $state(false);
   let showPost = $state(false);
-  const showPre = $derived(stage === "pre" && !preDismissed && $view?.session.status !== "completed");
+  const showPre = $derived(
+    stage === "pre" && !preDismissed && !$view?.session.preFeedbackDismissed && $view?.session.status !== "completed"
+  );
 
   // Per-exercise entry state, keyed by slot id. Seeded lazily from the best
   // available hint: last logged set → engine suggestion → last week → defaults.
@@ -177,7 +179,7 @@
     mode="pre"
     muscles={$feedback.muscles}
     onsave={async (a) => { await savePreSessionFeedback(db, sessionId, a); preDismissed = true; }}
-    onskip={() => (preDismissed = true)}
+    onskip={async () => { preDismissed = true; await dismissPreFeedback(db, sessionId); }}
     onback={onBack}
   />
 {/if}

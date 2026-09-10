@@ -70,6 +70,7 @@
   <Calendar
     onOpenSession={(sessionId, mesocycleId) => go({ name: "session", sessionId, mesocycleId })}
     onOpenBlock={(mesocycleId) => go({ name: "block", mesocycleId })}
+    onOpenBlocks={() => go({ name: "blocks" })}
   />
 {:else if screen.name === "blocks"}
   <Home onNewBlock={() => go({ name: "builder" })} onOpenBlock={(mesocycleId) => go({ name: "block", mesocycleId })} />

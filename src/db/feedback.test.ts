@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { TrainingDb } from "./index";
 import { createMesocycle } from "./mesocycles";
-import { feedbackStage, getSessionFeedback, musclesInSession, savePostSessionFeedback, savePreSessionFeedback } from "./feedback";
+import { dismissPreFeedback, feedbackStage, getSessionFeedback, musclesInSession, savePostSessionFeedback, savePreSessionFeedback } from "./feedback";
 import { startSession } from "./sessions";
 
 let db: TrainingDb;
@@ -60,5 +60,13 @@ describe("feedback flow", () => {
   it("post answers without a pre row create one with soreness 0", async () => {
     await savePostSessionFeedback(db, sessionId, { chest: { pump: 1, jointPain: 1, workload: 1 } });
     expect((await getSessionFeedback(db, sessionId))[0]).toMatchObject({ soreness: 0, jointPain: 1 });
+  });
+});
+
+describe("dismissPreFeedback", () => {
+  it("persists the skip on the session without creating feedback rows", async () => {
+    await dismissPreFeedback(db, sessionId);
+    expect((await db.sessions.get(sessionId))!.preFeedbackDismissed).toBe(true);
+    expect(await getSessionFeedback(db, sessionId)).toEqual([]);
   });
 });

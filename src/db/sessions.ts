@@ -4,6 +4,7 @@
 // in a given week, logging sets, and reading a session back with last week's
 // numbers alongside for reference.
 
+import { isDeloadWeek, targetRirForWeek } from "../lib/progression";
 import type { TrainingDb } from "./index";
 import { planWeek } from "./planning";
 import type { Exercise, Mesocycle, MesocycleDay, Session, SessionExercise, SessionStatus, WorkSet } from "./schema";
@@ -213,4 +214,59 @@ export async function resolveTrainTarget(db: TrainingDb): Promise<TrainTarget> {
   if (planned[0]) return { kind: "block", mesocycleId: planned[0].id };
 
   return { kind: "none" };
+}
+
+// ---------------------------------------------------------------------------
+// Current block summary (Calendar screen)
+// ---------------------------------------------------------------------------
+
+export interface CurrentBlockSummary {
+  mesocycle: Mesocycle;
+  weekNum: number;
+  deload: boolean;
+  targetRir: number;
+  daysDone: number;
+  daysTotal: number;
+  /** First template day this week that hasn't been completed or skipped. */
+  nextDay: { id: number; name: string; status: SessionStatus | "not_started"; sessionId?: number } | null;
+  /** A session currently open, if any. */
+  inProgress: { sessionId: number; dayName: string } | null;
+}
+
+/** The block you're working through, with where you are in it. Null if none. */
+export async function currentBlockSummary(db: TrainingDb): Promise<CurrentBlockSummary | null> {
+  const target = await resolveTrainTarget(db);
+  if (target.kind === "none") return null;
+  const mesocycle = await db.mesocycles.get(target.mesocycleId);
+  if (!mesocycle) return null;
+
+  const weekNum = await currentWeek(db, mesocycle);
+  const days = await db.mesocycleDays.where("mesocycleId").equals(mesocycle.id).sortBy("dayIndex");
+  const statuses = await sessionStatusesForWeek(db, mesocycle.id, weekNum);
+  const finished = (id: number) => {
+    const st = statuses.get(id)?.status;
+    return st === "completed" || st === "skipped";
+  };
+  const daysDone = days.filter((d) => finished(d.id)).length;
+  const next = days.find((d) => !finished(d.id)) ?? null;
+
+  let inProgress: CurrentBlockSummary["inProgress"] = null;
+  if (target.kind === "session") {
+    const session = await db.sessions.get(target.sessionId);
+    const day = session && (await db.mesocycleDays.get(session.mesocycleDayId));
+    if (session && day) inProgress = { sessionId: session.id, dayName: day.name };
+  }
+
+  return {
+    mesocycle,
+    weekNum,
+    deload: isDeloadWeek(weekNum, mesocycle.numWeeks),
+    targetRir: targetRirForWeek(weekNum, mesocycle.numWeeks, mesocycle.startingRir),
+    daysDone,
+    daysTotal: days.length,
+    nextDay: next
+      ? { id: next.id, name: next.name, status: statuses.get(next.id)?.status ?? "not_started", sessionId: statuses.get(next.id)?.sessionId }
+      : null,
+    inProgress,
+  };
 }

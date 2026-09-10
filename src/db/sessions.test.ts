@@ -4,6 +4,7 @@ import { TrainingDb } from "./index";
 import { createMesocycle } from "./mesocycles";
 import {
   completeSession,
+  currentBlockSummary,
   currentWeek,
   deleteSet,
   getSessionView,
@@ -175,5 +176,37 @@ describe("resolveTrainTarget", () => {
   it("is none with no blocks at all", async () => {
     await db.mesocycles.clear();
     expect(await resolveTrainTarget(db)).toEqual({ kind: "none" });
+  });
+});
+
+describe("currentBlockSummary", () => {
+  it("tracks week, progress, next day, and the open session", async () => {
+    let s = (await currentBlockSummary(db))!;
+    expect(s).toMatchObject({ weekNum: 1, deload: false, targetRir: 2, daysDone: 0, daysTotal: 2, inProgress: null });
+    expect(s.nextDay).toMatchObject({ name: "Push", status: "not_started" });
+
+    const sid = await startSession(db, { mesocycleId, weekNum: 1, mesocycleDayId: dayIds[0] });
+    s = (await currentBlockSummary(db))!;
+    expect(s.inProgress).toEqual({ sessionId: sid, dayName: "Push" });
+    expect(s.nextDay).toMatchObject({ name: "Push", status: "in_progress", sessionId: sid });
+
+    await completeSession(db, sid);
+    s = (await currentBlockSummary(db))!;
+    expect(s).toMatchObject({ daysDone: 1, inProgress: null });
+    expect(s.nextDay).toMatchObject({ name: "Legs", status: "not_started" });
+
+    await completeSession(db, await startSession(db, { mesocycleId, weekNum: 1, mesocycleDayId: dayIds[1] }));
+    s = (await currentBlockSummary(db))!;
+    expect(s).toMatchObject({ weekNum: 2, daysDone: 0, targetRir: 0 }); // 2 accumulation weeks from 2 RIR: 2, 0
+  });
+
+  it("flags the deload week", async () => {
+    for (let w = 1; w <= 2; w++) for (const d of dayIds) await completeSession(db, await startSession(db, { mesocycleId, weekNum: w, mesocycleDayId: d }));
+    expect(await currentBlockSummary(db)).toMatchObject({ weekNum: 3, deload: true, targetRir: 3 });
+  });
+
+  it("is null with no blocks", async () => {
+    await db.mesocycles.clear();
+    expect(await currentBlockSummary(db)).toBeNull();
   });
 });

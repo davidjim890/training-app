@@ -99,6 +99,8 @@ export interface Session {
   startedAt: string | null;
   completedAt: string | null;
   status: SessionStatus;
+  /** Set when "Skip for now" was tapped on the pre-session prompt, so it isn't re-asked. */
+  preFeedbackDismissed?: boolean;
 }
 
 /** An exercise slot inside a session, carrying that week's prescription. */

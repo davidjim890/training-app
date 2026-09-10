@@ -73,3 +73,8 @@ export async function savePostSessionFeedback(
     }
   });
 }
+
+/** Remember that the pre-session prompt was skipped for this session. */
+export async function dismissPreFeedback(db: TrainingDb, sessionId: number): Promise<void> {
+  await db.sessions.update(sessionId, { preFeedbackDismissed: true });
+}

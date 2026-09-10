@@ -131,9 +131,10 @@ Schema is at **v2** (v1 shipped; v2 added `cardioSessions`).
   browser history (so the iOS edge swipe works) plus a bottom `TabBar`
   (Calendar / Blocks / Cardio / Settings). Calendar is the landing screen:
   a Monday-first month grid (`src/lib/dates.ts`, pure) with dots for lifting
-  and cardio per day (`src/db/calendar.ts`), a day detail list, and a
-  Continue card driven by `resolveTrainTarget` (in-progress session → active
-  block → planned block).
+  and cardio per day (`src/db/calendar.ts`), a "Current lifting block"
+  section (`currentBlockSummary`: week, days done, target RIR, next day /
+  continue button; block chosen by `resolveTrainTarget`: in-progress session
+  → active block → planned block), and a day detail list.
 
 Known open questions: MEV is unread (volume can drop to 0 after joint pain);
 RIR ramp rounding on 4/6-week blocks; `planNextWeek` past the final week.

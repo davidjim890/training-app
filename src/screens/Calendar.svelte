@@ -7,10 +7,14 @@
   import { db } from "../db";
   import { monthActivity, type DayActivity } from "../db/calendar";
   import { CARDIO_INTENSITY_LABELS } from "../db/schema";
-  import { resolveTrainTarget, type TrainTarget } from "../db/sessions";
+  import { currentBlockSummary } from "../db/sessions";
   import { addMonths, dayKey, monthGrid, monthLabel, WEEKDAY_LABELS } from "../lib/dates";
 
-  let { onOpenSession, onOpenBlock }: { onOpenSession: (sessionId: number, mesocycleId: number) => void; onOpenBlock: (mesocycleId: number) => void } = $props();
+  let {
+    onOpenSession,
+    onOpenBlock,
+    onOpenBlocks,
+  }: { onOpenSession: (sessionId: number, mesocycleId: number) => void; onOpenBlock: (mesocycleId: number) => void; onOpenBlocks: () => void } = $props();
 
   const today = dayKey(new Date());
   let year = $state(new Date().getFullYear());
@@ -30,8 +34,7 @@
   const day = $derived(activity.get(selected));
   const inThisMonth = $derived(selected.startsWith(`${year}-${String(month).padStart(2, "0")}`));
 
-  const target = liveQuery(() => resolveTrainTarget(db));
-  const continueLabel = (t: TrainTarget) => (t.kind === "session" ? "Continue session" : "Open current block");
+  const block = liveQuery(() => currentBlockSummary(db));
 
   function shift(delta: number) {
     ({ year, month } = addMonths(year, month, delta));
@@ -47,17 +50,6 @@
 
 <div class="page stack">
   <h1>Calendar</h1>
-
-  {#if $target && $target.kind !== "none"}
-    {@const t = $target}
-    <button
-      type="button"
-      class="btn primary block"
-      onclick={() => (t.kind === "session" ? onOpenSession(t.sessionId, t.mesocycleId) : t.kind === "block" ? onOpenBlock(t.mesocycleId) : null)}
-    >
-      {continueLabel(t)} →
-    </button>
-  {/if}
 
   <section class="card">
     <div class="row between">
@@ -100,6 +92,40 @@
       {/if}
     </div>
   </section>
+
+  <h3>Current lifting block</h3>
+  {#if $block === undefined}
+    <div class="card"><p class="muted">Loading…</p></div>
+  {:else if $block === null}
+    <div class="card stack">
+      <p class="muted">No block yet.</p>
+      <button type="button" class="btn block" onclick={onOpenBlocks}>Create a block</button>
+    </div>
+  {:else}
+    {@const b = $block}
+    <section class="card stack">
+      <button type="button" class="btn ghost heading" onclick={() => onOpenBlock(b.mesocycle.id)}>
+        <span><strong>{b.mesocycle.name}</strong> <span class="muted small">· {b.mesocycle.status}</span></span>
+        <span class="muted">›</span>
+      </button>
+      <div class="stats">
+        <div><div class="big">{b.deload ? "Deload" : `Wk ${b.weekNum}`}</div><div class="muted small">of {b.mesocycle.numWeeks}</div></div>
+        <div><div class="big">{b.daysDone}<span class="muted">/{b.daysTotal}</span></div><div class="muted small">days this week</div></div>
+        <div><div class="big">{b.targetRir}</div><div class="muted small">target RIR</div></div>
+      </div>
+      {#if b.inProgress}
+        <button type="button" class="btn primary block" onclick={() => onOpenSession(b.inProgress!.sessionId, b.mesocycle.id)}>
+          Continue {b.inProgress.dayName} →
+        </button>
+      {:else if b.nextDay}
+        <button type="button" class="btn primary block" onclick={() => onOpenBlock(b.mesocycle.id)}>
+          Next up: {b.nextDay.name} →
+        </button>
+      {:else}
+        <p class="small muted">All days done this week.</p>
+      {/if}
+    </section>
+  {/if}
 
   <h3>{fmtSelected(selected)}</h3>
   {#if !day}
@@ -148,4 +174,7 @@
   .dot.lift { background: var(--accent); }
   .dot.cardio { background: #e8842c; }
   .btn.small { min-height: 36px; padding: 4px 10px; }
+  .btn.heading { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0; min-height: 0; text-align: left; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .big { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
 </style>
