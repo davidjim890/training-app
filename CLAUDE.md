@@ -129,8 +129,11 @@ Schema is at **v2** (v1 shipped; v2 added `cardioSessions`).
   gym screen), pre/post feedback prompts, Settings (export/import backup).
   No router — `App.svelte` holds a `screen` state value mirrored into
   browser history (so the iOS edge swipe works) plus a bottom `TabBar`
-  (Train / Blocks / Cardio / Settings). Train resolves via `resolveTrainTarget`:
-  in-progress session → active block → planned block → Blocks list.
+  (Calendar / Blocks / Cardio / Settings). Calendar is the landing screen:
+  a Monday-first month grid (`src/lib/dates.ts`, pure) with dots for lifting
+  and cardio per day (`src/db/calendar.ts`), a day detail list, and a
+  Continue card driven by `resolveTrainTarget` (in-progress session → active
+  block → planned block).
 
 Known open questions: MEV is unread (volume can drop to 0 after joint pain);
 RIR ramp rounding on 4/6-week blocks; `planNextWeek` past the final week.

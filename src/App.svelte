@@ -7,9 +7,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import TabBar, { type Tab } from "./components/TabBar.svelte";
-  import { db } from "./db";
-  import { resolveTrainTarget } from "./db/sessions";
   import Block from "./screens/Block.svelte";
+  import Calendar from "./screens/Calendar.svelte";
   import Cardio from "./screens/Cardio.svelte";
   import Home from "./screens/Home.svelte";
   import MesocycleBuilder from "./screens/MesocycleBuilder.svelte";
@@ -17,14 +16,15 @@
   import Settings from "./screens/Settings.svelte";
 
   type Screen =
-    | { name: "home" }
+    | { name: "calendar" }
+    | { name: "blocks" }
     | { name: "builder" }
-    | { name: "settings" }
     | { name: "cardio" }
+    | { name: "settings" }
     | { name: "block"; mesocycleId: number }
     | { name: "session"; sessionId: number; mesocycleId: number };
 
-  const HOME: Screen = { name: "home" };
+  const HOME: Screen = { name: "calendar" };
   let screen = $state<Screen>(HOME);
 
   /** Forward navigation: push a history entry so "back" returns here. */
@@ -47,27 +47,13 @@
   const activeTab = $derived<Tab>(
     screen.name === "settings" ? "settings"
       : screen.name === "cardio" ? "cardio"
-      : screen.name === "block" || screen.name === "session" ? "train"
+      : screen.name === "calendar" ? "calendar"
       : "blocks"
   );
 
-  async function selectTab(tab: Tab) {
-    if (tab === "blocks") {
-      if (screen.name !== "home") go(HOME);
-    } else if (tab === "settings") {
-      if (screen.name !== "settings") go({ name: "settings" });
-    } else if (tab === "cardio") {
-      if (screen.name !== "cardio") go({ name: "cardio" });
-    } else {
-      const t = await resolveTrainTarget(db);
-      if (t.kind === "session" && !(screen.name === "session" && screen.sessionId === t.sessionId)) {
-        go({ name: "session", sessionId: t.sessionId, mesocycleId: t.mesocycleId });
-      } else if (t.kind === "block" && !(screen.name === "block" && screen.mesocycleId === t.mesocycleId)) {
-        go({ name: "block", mesocycleId: t.mesocycleId });
-      } else if (t.kind === "none" && screen.name !== "home") {
-        go(HOME); // nothing to train yet: the list is where you create a block
-      }
-    }
+  function selectTab(tab: Tab) {
+    const target: Screen = tab === "calendar" ? HOME : tab === "blocks" ? { name: "blocks" } : tab === "cardio" ? { name: "cardio" } : { name: "settings" };
+    if (screen.name !== target.name) go(target);
   }
 
   onMount(() => {
@@ -80,14 +66,19 @@
   });
 </script>
 
-{#if screen.name === "home"}
+{#if screen.name === "calendar"}
+  <Calendar
+    onOpenSession={(sessionId, mesocycleId) => go({ name: "session", sessionId, mesocycleId })}
+    onOpenBlock={(mesocycleId) => go({ name: "block", mesocycleId })}
+  />
+{:else if screen.name === "blocks"}
   <Home onNewBlock={() => go({ name: "builder" })} onOpenBlock={(mesocycleId) => go({ name: "block", mesocycleId })} />
 {:else if screen.name === "settings"}
   <Settings />
 {:else if screen.name === "cardio"}
   <Cardio />
 {:else if screen.name === "builder"}
-  <!-- After saving, replace the builder entry so back goes home, not to an empty form. -->
+  <!-- After saving, replace the builder entry so back goes to the list, not to an empty form. -->
   <MesocycleBuilder onSaved={(mesocycleId) => go({ name: "block", mesocycleId }, { replace: true })} onCancel={back} />
 {:else if screen.name === "block"}
   {#key screen.mesocycleId}

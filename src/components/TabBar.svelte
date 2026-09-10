@@ -1,17 +1,16 @@
 <!--
-  Bottom tab bar, in thumb reach. Three destinations; the Train tab resolves
-  to wherever you are in the current block. Overlays (prompts, picker) sit
-  above it via z-index so you can't switch away mid-prompt.
+  Bottom tab bar, in thumb reach. Overlays (prompts, picker) sit above it
+  via z-index so you can't switch away mid-prompt.
 -->
 <script lang="ts">
-  export type Tab = "train" | "blocks" | "cardio" | "settings";
+  export type Tab = "calendar" | "blocks" | "cardio" | "settings";
   let { active, onselect }: { active: Tab; onselect: (tab: Tab) => void } = $props();
 </script>
 
 <nav class="tabbar" aria-label="Main">
-  <button type="button" class:on={active === "train"} onclick={() => onselect("train")} aria-current={active === "train" ? "page" : undefined}>
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10h2V8h2v8H5v-2H3v-4zm16 0h2v4h-2v2h-2V8h2v2zM9 11h6v2H9v-2z"/></svg>
-    <span>Train</span>
+  <button type="button" class:on={active === "calendar"} onclick={() => onselect("calendar")} aria-current={active === "calendar" ? "page" : undefined}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2zm-1 8v10h12V10H6zm2 2h3v3H8v-3z"/></svg>
+    <span>Calendar</span>
   </button>
   <button type="button" class:on={active === "blocks"} onclick={() => onselect("blocks")} aria-current={active === "blocks" ? "page" : undefined}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v3H4V5zm0 5.5h16v3H4v-3zM4 16h16v3H4v-3z"/></svg>
