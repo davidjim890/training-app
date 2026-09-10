@@ -10,6 +10,7 @@
   import { db } from "./db";
   import { resolveTrainTarget } from "./db/sessions";
   import Block from "./screens/Block.svelte";
+  import Cardio from "./screens/Cardio.svelte";
   import Home from "./screens/Home.svelte";
   import MesocycleBuilder from "./screens/MesocycleBuilder.svelte";
   import Session from "./screens/Session.svelte";
@@ -19,6 +20,7 @@
     | { name: "home" }
     | { name: "builder" }
     | { name: "settings" }
+    | { name: "cardio" }
     | { name: "block"; mesocycleId: number }
     | { name: "session"; sessionId: number; mesocycleId: number };
 
@@ -43,7 +45,10 @@
   }
 
   const activeTab = $derived<Tab>(
-    screen.name === "settings" ? "settings" : screen.name === "block" || screen.name === "session" ? "train" : "blocks"
+    screen.name === "settings" ? "settings"
+      : screen.name === "cardio" ? "cardio"
+      : screen.name === "block" || screen.name === "session" ? "train"
+      : "blocks"
   );
 
   async function selectTab(tab: Tab) {
@@ -51,6 +56,8 @@
       if (screen.name !== "home") go(HOME);
     } else if (tab === "settings") {
       if (screen.name !== "settings") go({ name: "settings" });
+    } else if (tab === "cardio") {
+      if (screen.name !== "cardio") go({ name: "cardio" });
     } else {
       const t = await resolveTrainTarget(db);
       if (t.kind === "session" && !(screen.name === "session" && screen.sessionId === t.sessionId)) {
@@ -77,6 +84,8 @@
   <Home onNewBlock={() => go({ name: "builder" })} onOpenBlock={(mesocycleId) => go({ name: "block", mesocycleId })} />
 {:else if screen.name === "settings"}
   <Settings />
+{:else if screen.name === "cardio"}
+  <Cardio />
 {:else if screen.name === "builder"}
   <!-- After saving, replace the builder entry so back goes home, not to an empty form. -->
   <MesocycleBuilder onSaved={(mesocycleId) => go({ name: "block", mesocycleId }, { replace: true })} onCancel={back} />

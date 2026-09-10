@@ -62,6 +62,9 @@ an `upgrade()`.
 - `sets` — weight, reps, actualRir per set
 - `muscleFeedback` — per session per muscle: soreness, pump, jointPain, workload
 - `volumeLandmarks` — the author's personal MEV/MRV estimates per muscle group
+- `cardioSessions` (schema v2) — standalone cardio log: date, kind, durationMin,
+  distanceKm?, intensity (0 easy → 2 hard), notes?. Not linked to blocks and
+  not an engine input.
 
 Muscle groups are the `MUSCLE_GROUPS` array in `progression.ts`. Back is
 split into lats / mid-back / traps / rear-delts; `shoulders` means front +
@@ -111,6 +114,7 @@ named and centralized, not scattered as magic numbers.
 
 Feature-complete for a first real block. `dexie` and `vite-plugin-pwa` are
 configured (autoUpdate service worker, manifest + icons in `public/`).
+Schema is at **v2** (v1 shipped; v2 added `cardioSessions`).
 
 - Engine (`src/lib/progression.ts`): RIR ramp, per-muscle volume rule, deload,
   load suggestion, week feedback aggregation, set distribution, MRV revision.
@@ -125,7 +129,7 @@ configured (autoUpdate service worker, manifest + icons in `public/`).
   gym screen), pre/post feedback prompts, Settings (export/import backup).
   No router — `App.svelte` holds a `screen` state value mirrored into
   browser history (so the iOS edge swipe works) plus a bottom `TabBar`
-  (Train / Blocks / Settings). Train resolves via `resolveTrainTarget`:
+  (Train / Blocks / Cardio / Settings). Train resolves via `resolveTrainTarget`:
   in-progress session → active block → planned block → Blocks list.
 
 Known open questions: MEV is unread (volume can drop to 0 after joint pain);

@@ -18,6 +18,7 @@
 import Dexie, { type EntityTable } from "dexie";
 import { seedExercises } from "./seed";
 import type {
+  CardioSession,
   Exercise,
   Mesocycle,
   MesocycleDay,
@@ -39,6 +40,7 @@ export class TrainingDb extends Dexie {
   sets!: EntityTable<WorkSet, "id">;
   muscleFeedback!: EntityTable<MuscleFeedbackRecord, "id">;
   volumeLandmarks!: EntityTable<VolumeLandmarkRecord, "muscleGroup">;
+  cardioSessions!: EntityTable<CardioSession, "id">;
 
   constructor(name = "training") {
     super(name);
@@ -56,6 +58,12 @@ export class TrainingDb extends Dexie {
       sets: "++id, sessionExerciseId, [sessionExerciseId+setIndex]",
       muscleFeedback: "++id, sessionId, [sessionId+muscleGroup], [mesocycleId+muscleGroup]",
       volumeLandmarks: "muscleGroup",
+    });
+
+    // v2: standalone cardio log. Only the new table needs declaring; Dexie
+    // carries the v1 tables forward unchanged.
+    this.version(2).stores({
+      cardioSessions: "++id, date, kind",
     });
 
     // Fires exactly once, when the database is first created on a device.

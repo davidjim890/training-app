@@ -148,3 +148,27 @@ export interface VolumeLandmarkRecord {
   /** ISO datetime of the last revision, so you can see how stale a guess is. */
   updatedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Cardio — a standalone log, not part of the block/session structure
+// ---------------------------------------------------------------------------
+
+export const CARDIO_KINDS = ["run", "bike", "row", "swim", "walk", "stairs", "elliptical", "other"] as const;
+export type CardioKind = (typeof CARDIO_KINDS)[number];
+
+/** 0 easy (conversational), 1 moderate, 2 hard. */
+export type CardioIntensity = 0 | 1 | 2;
+export const CARDIO_INTENSITY_LABELS = ["Easy", "Moderate", "Hard"] as const;
+
+export interface CardioSession {
+  id: number;
+  /** ISO date (YYYY-MM-DD) the workout happened. */
+  date: string;
+  kind: CardioKind;
+  durationMin: number;
+  distanceKm?: number;
+  intensity: CardioIntensity;
+  notes?: string;
+  /** ISO datetime when the row was written. */
+  loggedAt: string;
+}

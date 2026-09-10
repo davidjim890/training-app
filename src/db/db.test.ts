@@ -58,9 +58,10 @@ async function seed(d: TrainingDb) {
 }
 
 describe("schema", () => {
-  it("opens and exposes all nine tables", async () => {
+  it("opens and exposes all ten tables", async () => {
     await db.open();
     expect(db.tables.map((t) => t.name).sort()).toEqual([
+      "cardioSessions",
       "exercises",
       "mesocycleDayExercises",
       "mesocycleDays",
