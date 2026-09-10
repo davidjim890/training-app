@@ -1,13 +1,15 @@
 /* Mobile-first, one-handed, sweaty. Big targets, no tiny text, no hover-only UI. */
 
 :root {
-  --bg: #f6f6f4;
+  --bg: #f7f6f4;
   --surface: #ffffff;
-  --text: #1a1a1a;
+  --text: #141414;
   --muted: #6b6b6b;
   --border: #dedcd7;
-  --accent: #0e7c5b;
-  --accent-text: #ffffff;
+  /* Deadshot orange. Dark text on it for contrast in both themes. */
+  --accent: #f26419;
+  --accent-text: #140903;
+  --cardio: #2f7fe0;
   --danger: #b3261e;
   --danger-bg: #fdecea;
   --tap: 48px;
@@ -24,13 +26,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121212;
-    --surface: #1e1e1e;
+    --bg: #0a0a0a;
+    --surface: #171717;
     --text: #ececec;
     --muted: #9a9a9a;
-    --border: #333;
-    --accent: #3ccf9a;
-    --accent-text: #08130f;
+    --border: #2b2b2b;
+    --accent: #ff7a2f;
+    --accent-text: #140903;
+    --cardio: #5aa9ff;
     --danger: #ff8a80;
     --danger-bg: #3a1c1a;
   }

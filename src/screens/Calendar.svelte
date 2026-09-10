@@ -172,7 +172,7 @@
   .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
   .dot.inline { vertical-align: middle; }
   .dot.lift { background: var(--accent); }
-  .dot.cardio { background: #e8842c; }
+  .dot.cardio { background: var(--cardio); }
   .btn.small { min-height: 36px; padding: 4px 10px; }
   .btn.heading { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0; min-height: 0; text-align: left; }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
