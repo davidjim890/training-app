@@ -1,0 +1,140 @@
+/* Mobile-first, one-handed, sweaty. Big targets, no tiny text, no hover-only UI. */
+
+:root {
+  --bg: #f6f6f4;
+  --surface: #ffffff;
+  --text: #1a1a1a;
+  --muted: #6b6b6b;
+  --border: #dedcd7;
+  --accent: #0e7c5b;
+  --accent-text: #ffffff;
+  --danger: #b3261e;
+  --danger-bg: #fdecea;
+  --tap: 48px;
+  --radius: 12px;
+
+  color-scheme: light dark;
+  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --surface: #1e1e1e;
+    --text: #ececec;
+    --muted: #9a9a9a;
+    --border: #333;
+    --accent: #3ccf9a;
+    --accent-text: #08130f;
+    --danger: #ff8a80;
+    --danger-bg: #3a1c1a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+h1, h2, h3 { margin: 0 0 8px; line-height: 1.2; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+p { margin: 0 0 8px; }
+.muted { color: var(--muted); }
+.small { font-size: 0.875rem; }
+
+/* Layout */
+.page { padding: 16px; max-width: 640px; margin: 0 auto; }
+.stack > * + * { margin-top: 12px; }
+.row { display: flex; align-items: center; gap: 12px; }
+.row.between { justify-content: space-between; }
+.grow { flex: 1; min-width: 0; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+/* Controls — 16px font on inputs stops iOS Safari zooming on focus. */
+input, select, button { font: inherit; color: inherit; }
+input[type="text"], input[type="date"], select {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 16px;
+}
+label { display: block; }
+label > span { display: block; font-size: 0.875rem; color: var(--muted); margin-bottom: 4px; }
+
+.btn {
+  min-height: var(--tap);
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.btn.danger { color: var(--danger); }
+.btn.ghost { background: transparent; border-color: transparent; }
+.btn.block { width: 100%; }
+.btn.icon { width: var(--tap); padding: 0; font-size: 1.4rem; line-height: 1; }
+
+.error {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.error ul { margin: 0; padding-left: 18px; }
+
+/* Sticky action bar at the bottom, within thumb reach. */
+.actions {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+
+/* Full-screen overlay for pickers. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  overflow-y: auto;
+  z-index: 10;
+}
+
+/* Tappable list */
+.list { display: flex; flex-direction: column; gap: 8px; }
+.list .btn { text-align: left; display: flex; justify-content: space-between; align-items: center; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
