@@ -4,7 +4,7 @@ import { TrainingDb } from "./index";
 import { createMesocycle } from "./mesocycles";
 import { savePostSessionFeedback, savePreSessionFeedback } from "./feedback";
 import { planWeek } from "./planning";
-import { completeSession, logSet, startSession } from "./sessions";
+import { completeSession, logSet, startSession, swapExercise } from "./sessions";
 
 let db: TrainingDb;
 let mesocycleId: number;
@@ -138,5 +138,32 @@ describe("planWeek", () => {
     expect(slots[0].rationale).toMatch(/adding two sets/);
     expect(slots[2].rationale).toMatch(/No feedback/);
     expect(slots[0].targetRir).toBe(2);
+  });
+});
+
+describe("planWeek after a swap", () => {
+  it("a one-off swap still carries the slot's logged sets into next week's plan", async () => {
+    const sid = await startSession(db, { mesocycleId, weekNum: 1, mesocycleDayId: dayIds[0] });
+    const slots = await db.sessionExercises.where("sessionId").equals(sid).sortBy("order");
+    // Bench: 1 set, then swap to incline for the remaining 2 (mid-session)
+    await logSet(db, slots[0].id, { weight: 50, reps: 10, actualRir: 3 });
+    const incline = (await db.exercises.where("name").equals("Incline dumbbell press").first())!.id;
+    const { sessionExerciseId: newSlot } = await swapExercise(db, slots[0].id, incline);
+    await logSet(db, newSlot, { weight: 20, reps: 10, actualRir: 3 });
+    await logSet(db, newSlot, { weight: 20, reps: 10, actualRir: 3 });
+    // Fly: swap before any sets (slot re-pointed), then log its 2
+    const pecDeck = (await db.exercises.where("name").equals("Pec deck").first())!.id;
+    await swapExercise(db, slots[1].id, pecDeck);
+    for (let i = 0; i < 2; i++) await logSet(db, slots[1].id, { weight: 30, reps: 12, actualRir: 3 });
+    for (let i = 0; i < 3; i++) await logSet(db, slots[2].id, { weight: 20, reps: 12, actualRir: 3 });
+    await savePreSessionFeedback(db, sid, { chest: 0, biceps: 0 });
+    await savePostSessionFeedback(db, sid, { chest: { pump: 2, jointPain: 0, workload: 2 }, biceps: { pump: 2, jointPain: 0, workload: 2 } });
+    await completeSession(db, sid);
+
+    const plan = await planWeek(db, mesocycleId, 2);
+    // chest: benchA template slot = 1 + 2 = 3, flyA = 2, benchB (never done) = 3 -> 8, score 4 -> hold
+    expect(plan.muscles.chest).toMatchObject({ currentSets: 8, sets: 8 });
+    expect(plan.slots.get(templateIds.benchA)!.targetSets).toBe(3);
+    expect(plan.slots.get(templateIds.flyA)!.targetSets).toBe(2);
   });
 });

@@ -5,7 +5,9 @@
   stays the single subscriber to the exercises table.
 -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { db } from "../db";
+  import Choice from "./Choice.svelte";
   import { addCustomExercise, DuplicateExerciseError } from "../db/exercises";
   import { EQUIPMENT, type Equipment, type Exercise, type MuscleGroup } from "../db/schema";
   import { MUSCLE_GROUPS } from "../lib/progression";
@@ -15,15 +17,25 @@
     exclude = [],
     onpick,
     onclose,
+    title = "Add exercise",
+    initialMuscle = "chest",
+    scopeLabels,
+    scope = $bindable(0),
   }: {
     exercises: Exercise[];
     /** Ids already on the day, shown but not tappable. */
     exclude?: number[];
     onpick: (exerciseId: number) => void;
     onclose: () => void;
+    title?: string;
+    initialMuscle?: MuscleGroup;
+    /** Optional segmented choice shown under the title (e.g. "Just today" / "Rest of block"). */
+    scopeLabels?: readonly string[];
+    scope?: number;
   } = $props();
 
-  let muscle = $state<MuscleGroup>("chest");
+  // The starting group is fixed for the life of the picker, so capturing it once is intended.
+  let muscle = $state<MuscleGroup>(untrack(() => initialMuscle));
   let showCustom = $state(false);
   let customName = $state("");
   let customEquipment = $state<Equipment>("machine");
@@ -56,9 +68,13 @@
 <div class="overlay">
   <div class="page stack">
     <div class="row between">
-      <h2>Add exercise</h2>
+      <h2>{title}</h2>
       <button type="button" class="btn ghost" onclick={onclose}>Cancel</button>
     </div>
+
+    {#if scopeLabels}
+      <Choice bind:value={scope} options={scopeLabels} label="Apply to" />
+    {/if}
 
     <div class="chips" role="tablist" aria-label="Muscle group">
       {#each MUSCLE_GROUPS as mg (mg)}

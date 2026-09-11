@@ -136,10 +136,15 @@ Schema is at **v2** (v1 shipped; v2 added `cardioSessions`).
   continue button; block chosen by `resolveTrainTarget`: in-progress session
   → active block → planned block), and a day detail list.
 
+Mid-session exercise swap (`swapExercise` in `src/db/sessions.ts`): no sets
+logged → slot re-pointed; sets logged → original keeps them, replacement
+inserted after with the remaining target. "Rest of block" also updates the
+template slot. Session slots carry `templateSlotId` so `planWeek` matches
+last week's slot even after a swap.
+
 Known open questions: MEV is unread (volume can drop to 0 after joint pain);
 RIR ramp rounding on 4/6-week blocks; `planNextWeek` past the final week.
-Not yet built: block completion + `reviseMrv`, landmark editing UI, exercise
-swap within a block.
+Not yet built: block completion + `reviseMrv`, landmark editing UI.
 
 To run in a headless browser for verification: Playwright-core with
 `channel: "chrome"` against the installed Google Chrome works; no browser

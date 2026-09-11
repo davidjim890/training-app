@@ -77,6 +77,10 @@ export async function planWeek(db: TrainingDb, mesocycleId: number, weekNum: num
   const prevSessionByDay = new Map(prevSessions.map((s) => [s.mesocycleDayId, s]));
   const prevSlots = await db.sessionExercises.where("sessionId").anyOf(prevSessions.map((s) => s.id)).toArray();
   const prevSlotByKey = new Map(prevSlots.map((s) => [`${s.sessionId}:${s.exerciseId}`, s]));
+  // A swapped slot keeps its templateSlotId; several session slots may share
+  // one (mid-session swap), so their logged sets are summed.
+  const prevSlotsByTemplate = new Map<number, typeof prevSlots>();
+  for (const s of prevSlots) if (s.templateSlotId !== undefined) prevSlotsByTemplate.set(s.templateSlotId, [...(prevSlotsByTemplate.get(s.templateSlotId) ?? []), s]);
   const loggedBySlot = new Map<number, number>();
   for (const set of await db.sets.where("sessionExerciseId").anyOf(prevSlots.map((s) => s.id)).toArray()) {
     loggedBySlot.set(set.sessionExerciseId, (loggedBySlot.get(set.sessionExerciseId) ?? 0) + 1);
@@ -84,10 +88,12 @@ export async function planWeek(db: TrainingDb, mesocycleId: number, weekNum: num
 
   const base = (t: MesocycleDayExercise): number => {
     const session = prevSessionByDay.get(t.mesocycleDayId);
-    const slot = session && prevSlotByKey.get(`${session.id}:${t.exerciseId}`);
-    if (!slot) return t.startingSets;
-    if (session.status === "completed") return loggedBySlot.get(slot.id) ?? 0;
-    return slot.targetSets; // not done (yet): count what was planned
+    if (!session) return t.startingSets;
+    const byTemplate = (prevSlotsByTemplate.get(t.id) ?? []).filter((s) => s.sessionId === session.id);
+    const slots = byTemplate.length ? byTemplate : [prevSlotByKey.get(`${session.id}:${t.exerciseId}`)].filter((s): s is NonNullable<typeof s> => !!s);
+    if (slots.length === 0) return t.startingSets;
+    if (session.status === "completed") return slots.reduce((n, s) => n + (loggedBySlot.get(s.id) ?? 0), 0);
+    return slots.reduce((n, s) => n + s.targetSets, 0); // not done (yet): count what was planned
   };
   const bases = new Map(template.map((t) => [t.id, base(t)] as const));
 

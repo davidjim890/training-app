@@ -59,6 +59,7 @@ export async function startSession(
             order: t.order,
             targetSets: slot?.targetSets ?? t.startingSets,
             targetRir: plan.targetRir,
+            templateSlotId: t.id,
             ...(slot?.rationale ? { rationale: slot.rationale } : {}),
           };
         })
@@ -269,4 +270,66 @@ export async function currentBlockSummary(db: TrainingDb): Promise<CurrentBlockS
       : null,
     inProgress,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Swapping an exercise mid-session
+// ---------------------------------------------------------------------------
+
+/**
+ * Replace an exercise in a session (the machine's taken, the cable's broken).
+ *
+ * - No sets logged yet: the slot simply points at the new exercise.
+ * - Sets already logged: they stay with the original exercise, whose target
+ *   shrinks to what was done; a new slot for the replacement is inserted
+ *   right after it with the remaining sets as its target.
+ *
+ * With `applyToBlock`, the template day is updated too, so future weeks
+ * use the replacement.
+ */
+export async function swapExercise(
+  db: TrainingDb,
+  sessionExerciseId: number,
+  newExerciseId: number,
+  opts: { applyToBlock?: boolean } = {}
+): Promise<{ sessionExerciseId: number }> {
+  return db.transaction("rw", [db.sessions, db.sessionExercises, db.sets, db.exercises, db.mesocycleDayExercises], async () => {
+    const slot = await db.sessionExercises.get(sessionExerciseId);
+    if (!slot) throw new Error("Exercise slot not found");
+    if (slot.exerciseId === newExerciseId) return { sessionExerciseId };
+    const [oldEx, newEx, session] = await Promise.all([db.exercises.get(slot.exerciseId), db.exercises.get(newExerciseId), db.sessions.get(slot.sessionId)]);
+    if (!newEx || !session) throw new Error("Exercise or session not found");
+    const clash = await db.sessionExercises.where("sessionId").equals(slot.sessionId).filter((s) => s.exerciseId === newExerciseId).first();
+    if (clash) throw new Error(`${newEx.name} is already in this session`);
+
+    const logged = await db.sets.where("sessionExerciseId").equals(sessionExerciseId).count();
+    let resultId = sessionExerciseId;
+
+    if (logged === 0) {
+      await db.sessionExercises.update(sessionExerciseId, { exerciseId: newExerciseId });
+    } else {
+      // Make room after the original slot.
+      const later = await db.sessionExercises.where("sessionId").equals(slot.sessionId).filter((s) => s.order > slot.order).toArray();
+      await Promise.all(later.map((s) => db.sessionExercises.update(s.id, { order: s.order + 1 })));
+      resultId = await db.sessionExercises.add({
+        sessionId: slot.sessionId,
+        exerciseId: newExerciseId,
+        order: slot.order + 1,
+        targetSets: Math.max(1, slot.targetSets - logged),
+        targetRir: slot.targetRir,
+        rationale: `Swapped in for ${oldEx?.name ?? "the previous exercise"} mid-session.`,
+        ...(slot.templateSlotId !== undefined ? { templateSlotId: slot.templateSlotId } : {}),
+      });
+      await db.sessionExercises.update(sessionExerciseId, { targetSets: logged });
+    }
+
+    if (opts.applyToBlock) {
+      const template = slot.templateSlotId !== undefined
+        ? await db.mesocycleDayExercises.get(slot.templateSlotId)
+        : await db.mesocycleDayExercises.where("mesocycleDayId").equals(session.mesocycleDayId).filter((t) => t.exerciseId === slot.exerciseId).first();
+      if (template) await db.mesocycleDayExercises.update(template.id, { exerciseId: newExerciseId });
+    }
+
+    return { sessionExerciseId: resultId };
+  });
 }

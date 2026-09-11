@@ -12,6 +12,7 @@ import {
   resolveTrainTarget,
   sessionStatusesForWeek,
   startSession,
+  swapExercise,
   topSet,
 } from "./sessions";
 
@@ -208,5 +209,58 @@ describe("currentBlockSummary", () => {
   it("is null with no blocks", async () => {
     await db.mesocycles.clear();
     expect(await currentBlockSummary(db)).toBeNull();
+  });
+});
+
+describe("swapExercise", () => {
+  const exId = async (name: string) => (await db.exercises.where("name").equals(name).first())!.id;
+
+  it("with no sets logged, the slot just points at the new exercise", async () => {
+    const sid = await startSession(db, { mesocycleId, weekNum: 1, mesocycleDayId: dayIds[0] });
+    const slot = (await db.sessionExercises.where("sessionId").equals(sid).first())!;
+    const incline = await exId("Incline dumbbell press");
+    const r = await swapExercise(db, slot.id, incline);
+    expect(r.sessionExerciseId).toBe(slot.id);
+    const after = (await db.sessionExercises.get(slot.id))!;
+    expect(after).toMatchObject({ exerciseId: incline, targetSets: 3, templateSlotId: slot.templateSlotId });
+    expect(await db.sessionExercises.where("sessionId").equals(sid).count()).toBe(1);
+    // Template untouched
+    const tpl = (await db.mesocycleDayExercises.get(slot.templateSlotId!))!;
+    expect(tpl.exerciseId).toBe(benchId);
+  });
+
+  it("with sets logged, keeps them and inserts the replacement after with the remaining target", async () => {
+    const sid = await startSession(db, { mesocycleId, weekNum: 1, mesocycleDayId: dayIds[0] });
+    const slot = (await db.sessionExercises.where("sessionId").equals(sid).first())!;
+    await logSet(db, slot.id, { weight: 80, reps: 10, actualRir: 2 });
+    const incline = await exId("Incline dumbbell press");
+    const r = await swapExercise(db, slot.id, incline);
+    expect(r.sessionExerciseId).not.toBe(slot.id);
+
+    const slots = await db.sessionExercises.where("sessionId").equals(sid).sortBy("order");
+    expect(slots.map((s) => [s.exerciseId, s.order, s.targetSets])).toEqual([[benchId, 0, 1], [incline, 1, 2]]);
+    expect(slots[1].rationale).toMatch(/Swapped in for Barbell bench press/);
+    expect(slots[1].templateSlotId).toBe(slot.templateSlotId);
+    expect(await db.sets.where("sessionExerciseId").equals(slot.id).count()).toBe(1);
+  });
+
+  it("applyToBlock updates the template so next week uses the replacement", async () => {
+    const sid = await startSession(db, { mesocycleId, weekNum: 1, mesocycleDayId: dayIds[0] });
+    const slot = (await db.sessionExercises.where("sessionId").equals(sid).first())!;
+    const incline = await exId("Incline dumbbell press");
+    await swapExercise(db, slot.id, incline, { applyToBlock: true });
+    expect((await db.mesocycleDayExercises.get(slot.templateSlotId!))!.exerciseId).toBe(incline);
+    await completeSession(db, sid);
+    const w2 = await startSession(db, { mesocycleId, weekNum: 2, mesocycleDayId: dayIds[0] });
+    expect((await db.sessionExercises.where("sessionId").equals(w2).first())!.exerciseId).toBe(incline);
+  });
+
+  it("refuses an exercise already in the session and is a no-op for the same one", async () => {
+    const sid = await startSession(db, { mesocycleId, weekNum: 1, mesocycleDayId: dayIds[0] });
+    const slot = (await db.sessionExercises.where("sessionId").equals(sid).first())!;
+    await expect(swapExercise(db, slot.id, benchId)).resolves.toEqual({ sessionExerciseId: slot.id });
+    const incline = await exId("Incline dumbbell press");
+    await db.sessionExercises.add({ sessionId: sid, exerciseId: incline, order: 1, targetSets: 2, targetRir: 2 });
+    await expect(swapExercise(db, slot.id, incline)).rejects.toThrow(/already in this session/);
   });
 });

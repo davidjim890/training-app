@@ -113,6 +113,8 @@ export interface SessionExercise {
   targetRir: number;
   /** Why the engine chose targetSets. Absent in week 1. */
   rationale?: string;
+  /** The template slot this came from, so next week's plan matches even after a swap. */
+  templateSlotId?: number;
 }
 
 export interface WorkSet {
