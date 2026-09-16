@@ -13,8 +13,10 @@
   import { dismissPreFeedback, feedbackStage, getSessionFeedback, musclesInSession, savePostSessionFeedback, savePreSessionFeedback } from "../db/feedback";
   import { completeSession, deleteSet, getSessionView, logSet, swapExercise, topSet, type SessionExerciseView } from "../db/sessions";
   import { liftingEnergy, liftingSessionMinutes } from "../lib/energy";
-  import { PLATE_INCREMENT, isDeloadWeek, suggestLoad } from "../lib/progression";
+  import { isDeloadWeek, suggestLoad } from "../lib/progression";
+  import { PLATE_STEP, fmtWeight, plateStepKg, toDisplay, toKg, type WeightUnit } from "../lib/units";
   import { getSetting } from "../db/settings";
+  import { units } from "../stores/units";
 
   let { sessionId, onBack }: { sessionId: number; onBack: () => void } = $props();
 
@@ -55,27 +57,37 @@
   let busy = $state<number | null>(null);
   let error = $state("");
 
+  // Entry weights are in the DISPLAY unit; everything else here is kg.
+  const unit = $derived<WeightUnit>($units ?? "kg");
+
   function suggestion(ex: SessionExerciseView) {
     const top = topSet(ex.lastWeekSets);
     if (!top) return null;
-    return suggestLoad(top.weight, top.reps, top.actualRir, ex.slot.targetRir);
+    return suggestLoad(top.weight, top.reps, top.actualRir, ex.slot.targetRir, { min: 5, max: 30 }, plateStepKg(unit));
   }
 
-  function seedEntry(ex: SessionExerciseView): Entry {
+  function seedEntry(ex: SessionExerciseView, u: WeightUnit): Entry {
     const last = ex.sets.at(-1);
     const sug = suggestion(ex);
     const prev = ex.lastWeekSets[0];
-    if (last) return { weight: last.weight, reps: last.reps, rir: last.actualRir };
-    if (sug) return { weight: sug.weight, reps: sug.reps, rir: ex.slot.targetRir };
-    if (prev) return { weight: prev.weight, reps: prev.reps, rir: ex.slot.targetRir };
-    return { weight: 20, reps: 10, rir: ex.slot.targetRir };
+    if (last) return { weight: toDisplay(last.weight, u), reps: last.reps, rir: last.actualRir };
+    if (sug) return { weight: toDisplay(sug.weight, u), reps: sug.reps, rir: ex.slot.targetRir };
+    if (prev) return { weight: toDisplay(prev.weight, u), reps: prev.reps, rir: ex.slot.targetRir };
+    return { weight: u === "kg" ? 20 : 45, reps: 10, rir: ex.slot.targetRir };
   }
 
   // State can't be written during render, so entries are seeded here, once
-  // per exercise slot, whenever the view (re)loads.
+  // per exercise slot, whenever the view (re)loads. A unit change re-seeds
+  // everything, since the numbers on screen would otherwise be in the old unit.
+  let seededUnit = $state<WeightUnit | null>(null);
   $effect(() => {
+    const u = unit;
+    if (seededUnit !== u) {
+      entries = {};
+      seededUnit = u;
+    }
     for (const ex of $view?.exercises ?? []) {
-      if (!entries[ex.slot.id]) entries[ex.slot.id] = seedEntry(ex);
+      if (!entries[ex.slot.id]) entries[ex.slot.id] = seedEntry(ex, u);
     }
   });
 
@@ -84,7 +96,7 @@
     busy = ex.slot.id;
     error = "";
     try {
-      await logSet(db, ex.slot.id, { weight: e.weight, reps: e.reps, actualRir: e.rir });
+      await logSet(db, ex.slot.id, { weight: toKg(e.weight, unit), reps: e.reps, actualRir: e.rir });
     } catch (err) {
       error = (err as Error).message;
     } finally {
@@ -113,7 +125,7 @@
     onBack();
   }
 
-  const fmt = (s: { weight: number; reps: number; actualRir: number }) => `${s.weight} × ${s.reps} @ ${s.actualRir}`;
+  const fmt = (s: { weight: number; reps: number; actualRir: number }) => `${fmtWeight(s.weight, unit)} × ${s.reps} @ ${s.actualRir}`;
 
   const bodyWeight = liveQuery(() => getSetting(db, "bodyWeightKg"));
   const energy = $derived.by(() => {
@@ -177,7 +189,7 @@
           <p class="small"><span class="muted">Last week:</span> {ex.lastWeekSets.map(fmt).join(" · ")}</p>
         {/if}
         {#if sug}
-          <p class="small hint"><strong>Try {sug.weight} × {sug.reps}.</strong> <span class="muted">{sug.rationale}</span></p>
+          <p class="small hint"><strong>Try {fmtWeight(sug.weight, unit)} × {sug.reps}.</strong> <span class="muted">{sug.rationale}</span></p>
         {/if}
 
         {#if ex.sets.length}
@@ -193,7 +205,7 @@
 
         {#if entries[ex.slot.id]}
           <div class="entry">
-            <Stepper label="Weight (kg)" bind:value={entries[ex.slot.id].weight} min={0} max={500} step={PLATE_INCREMENT} />
+            <Stepper label="Weight ({unit})" bind:value={entries[ex.slot.id].weight} min={0} max={unit === "kg" ? 500 : 1100} step={PLATE_STEP[unit]} />
             <Stepper label="Reps" bind:value={entries[ex.slot.id].reps} min={1} max={50} />
             <Stepper label="RIR" bind:value={entries[ex.slot.id].rir} min={0} max={6} />
           </div>

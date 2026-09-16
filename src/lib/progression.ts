@@ -236,7 +236,7 @@ export function suggestLoad(
   // At light loads 5% rounds away to nothing, so always move at least one plate.
   if (lastActualRir > targetRir + 1) {
     return {
-      weight: Math.max(roundToPlate(lastWeight * LOAD_BUMP_OVERSHOOT), lastWeight + increment),
+      weight: Math.max(roundToPlate(lastWeight * LOAD_BUMP_OVERSHOOT, increment), lastWeight + increment),
       reps: lastReps,
       rationale: "You finished well short of the RIR target — bumping the load ~5%.",
     };
@@ -260,7 +260,7 @@ export function suggestLoad(
     };
   }
   return {
-    weight: Math.max(roundToPlate(lastWeight * LOAD_BUMP_TOP_OF_RANGE), lastWeight + increment),
+    weight: Math.max(roundToPlate(lastWeight * LOAD_BUMP_TOP_OF_RANGE, increment), lastWeight + increment),
     reps: repRange.min,
     rationale: "Top of the rep range — adding load and resetting reps.",
   };

@@ -161,8 +161,13 @@ describe("suggestLoad", () => {
     expect(suggestLoad(40, 30, 2, 2).weight).toBe(40 + PLATE_INCREMENT);
   });
 
-  it("honours a custom increment (e.g. lbs)", () => {
+  it("honours a custom increment (e.g. lbs) for both the floor and the rounding", () => {
     expect(suggestLoad(20, 10, 4, 2, { min: 5, max: 30 }, 5).weight).toBe(25);
+    // 100 * 1.05 = 105 -> rounds to the 5-step (105), not the default 2.5-step
+    expect(suggestLoad(100, 10, 4, 2, { min: 5, max: 30 }, 5).weight).toBe(105);
+    // 90 * 1.05 = 94.5 -> 95 with a 5-step; with the old default 2.5-step it was 95 too, so use 88: 92.4 -> 90 (5-step) vs 92.5 (2.5-step)
+    expect(suggestLoad(88, 10, 4, 2, { min: 5, max: 30 }, 5).weight).toBe(93); // max(90, 88+5)
+    expect(suggestLoad(88, 30, 2, 2, { min: 5, max: 30 }, 5).weight).toBe(93); // top of range: 90.2 -> 90, floor 93
   });
 
   it("trims a rep when you went past the target", () => {

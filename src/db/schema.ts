@@ -192,4 +192,6 @@ export interface SettingRecord {
 /** Typed keys. Add here, not as loose strings. */
 export interface Settings {
   bodyWeightKg: number;
+  /** Display unit for all weights. Storage is always kg. */
+  units: "kg" | "lb";
 }

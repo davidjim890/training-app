@@ -7,8 +7,11 @@
   import { liveQuery } from "dexie";
   import { db } from "../db";
   import { exportBackup, importBackup, parseBackup, serializeBackup } from "../db/backup";
-  import { BODY_WEIGHT_LIMITS, getSetting, setBodyWeightKg } from "../db/settings";
+  import { BODY_WEIGHT_LIMITS, getSetting, setBodyWeightKg, setSetting } from "../db/settings";
+  import Choice from "../components/Choice.svelte";
   import Stepper from "../components/Stepper.svelte";
+  import { units } from "../stores/units";
+  import { bodyWeightRange, toDisplay, toKg, type WeightUnit } from "../lib/units";
 
 
   const counts = liveQuery(async () => ({
@@ -22,21 +25,34 @@
   let error = $state("");
   let busy = $state(false);
 
-  // Body weight: edit locally, save on tap. Seeded from the stored value once.
+  // Units: 0 = kg, 1 = lb. Storage is always kg; only display changes.
+  const UNIT_LABELS = ["kg", "lb"] as const;
+  let unitIdx = $state<number | undefined>(undefined);
+  $effect(() => {
+    if (unitIdx === undefined && $units) unitIdx = $units === "lb" ? 1 : 0;
+  });
+  $effect(() => {
+    if (unitIdx !== undefined && $units && UNIT_LABELS[unitIdx] !== $units) void setSetting(db, "units", UNIT_LABELS[unitIdx] as WeightUnit);
+  });
+  const unit = $derived<WeightUnit>($units ?? "kg");
+  const range = $derived(bodyWeightRange(unit, BODY_WEIGHT_LIMITS));
+
+  // Body weight: edited in the display unit, saved as kg. Re-seeded when the
+  // stored value or the unit changes, unless you're mid-edit.
   const storedWeight = liveQuery(() => getSetting(db, "bodyWeightKg"));
-  let weight = $state(80);
-  let weightSeeded = $state(false);
+  let weight = $state(0);
+  let dirty = $state(false);
   let weightMsg = $state("");
   $effect(() => {
-    if (!weightSeeded && $storedWeight !== undefined) {
-      weight = $storedWeight;
-      weightSeeded = true;
-    }
+    const u = unit;
+    const stored = $storedWeight;
+    if (!dirty) weight = toDisplay(stored ?? 80, u);
   });
   async function saveWeight() {
     weightMsg = "";
     try {
-      await setBodyWeightKg(db, weight);
+      await setBodyWeightKg(db, toKg(weight, unit));
+      dirty = false;
       weightMsg = "Saved.";
     } catch (e) {
       weightMsg = (e as Error).message;
@@ -100,9 +116,14 @@
 
   <section class="card stack">
     <h3>You</h3>
-    <Stepper label="Body weight (kg)" bind:value={weight} min={BODY_WEIGHT_LIMITS.min} max={BODY_WEIGHT_LIMITS.max} step={0.5} />
-    <p class="small muted">Used to estimate calories for sessions and cardio. {$storedWeight === undefined ? "Not set yet — no estimates until it is." : `Currently ${$storedWeight} kg.`}</p>
-    <button type="button" class="btn block" onclick={saveWeight} disabled={$storedWeight === weight}>Save body weight</button>
+    <p class="small muted" style="margin:0">Weight units</p>
+    <Choice bind:value={unitIdx} options={UNIT_LABELS} label="Weight units" />
+    <p class="small muted">Applies to set weights, load suggestions, and body weight. Stored values don't change.</p>
+    <div oninput={() => (dirty = true)} onclick={() => (dirty = true)} role="presentation">
+      <Stepper label="Body weight ({unit})" bind:value={weight} min={range.min} max={range.max} step={range.step} />
+    </div>
+    <p class="small muted">Used to estimate calories for sessions and cardio. {$storedWeight === undefined ? "Not set yet — no estimates until it is." : `Currently ${toDisplay($storedWeight, unit)} ${unit}.`}</p>
+    <button type="button" class="btn block" onclick={saveWeight} disabled={!dirty}>Save body weight</button>
     {#if weightMsg}<p class="small">{weightMsg}</p>{/if}
   </section>
 

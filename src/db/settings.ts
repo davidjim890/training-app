@@ -18,5 +18,10 @@ export const BODY_WEIGHT_LIMITS = { min: 30, max: 250 } as const;
 
 export async function setBodyWeightKg(db: TrainingDb, kg: number): Promise<void> {
   if (!(kg >= BODY_WEIGHT_LIMITS.min && kg <= BODY_WEIGHT_LIMITS.max)) throw new Error("Body weight looks wrong");
-  await setSetting(db, "bodyWeightKg", Math.round(kg * 10) / 10);
+  // 3 decimals so a value typed in pounds reads back exactly.
+  await setSetting(db, "bodyWeightKg", Math.round(kg * 1000) / 1000);
+}
+
+export async function getUnits(db: TrainingDb): Promise<"kg" | "lb"> {
+  return (await getSetting(db, "units")) ?? "kg";
 }

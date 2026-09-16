@@ -65,7 +65,11 @@ an `upgrade()`.
 - `cardioSessions` (schema v2) — standalone cardio log: date, kind, durationMin,
   distanceKm?, inclinePct? (treadmill), intensity (0 easy → 2 hard), notes?.
   Not linked to blocks and not an engine input.
-- `settings` (schema v3) — key/value; typed keys in `Settings` (`bodyWeightKg`).
+- `settings` (schema v3) — key/value; typed keys in `Settings` (`bodyWeightKg`,
+  `units`). **All stored weights are kg.** `units` ("kg" | "lb") is display
+  only: `src/lib/units.ts` converts at the screen edge, `src/stores/units.ts`
+  is the live store components read. Plate step is 2.5 kg / 5 lb; the engine
+  gets the step in kg via `plateStepKg`.
 
 Muscle groups are the `MUSCLE_GROUPS` array in `progression.ts`. Back is
 split into lats / mid-back / traps / rear-delts; `shoulders` means front +
