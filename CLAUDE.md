@@ -63,8 +63,9 @@ an `upgrade()`.
 - `muscleFeedback` — per session per muscle: soreness, pump, jointPain, workload
 - `volumeLandmarks` — the author's personal MEV/MRV estimates per muscle group
 - `cardioSessions` (schema v2) — standalone cardio log: date, kind, durationMin,
-  distanceKm?, intensity (0 easy → 2 hard), notes?. Not linked to blocks and
-  not an engine input.
+  distanceKm?, inclinePct? (treadmill), intensity (0 easy → 2 hard), notes?.
+  Not linked to blocks and not an engine input.
+- `settings` (schema v3) — key/value; typed keys in `Settings` (`bodyWeightKg`).
 
 Muscle groups are the `MUSCLE_GROUPS` array in `progression.ts`. Back is
 split into lats / mid-back / traps / rear-delts; `shoulders` means front +
@@ -114,7 +115,14 @@ named and centralized, not scattered as magic numbers.
 
 Feature-complete for a first real block. `dexie` and `vite-plugin-pwa` are
 configured (autoUpdate service worker, manifest + icons in `public/`).
-Schema is at **v2** (v1 shipped; v2 added `cardioSessions`).
+Schema is at **v3** (v1 shipped; v2 added `cardioSessions`; v3 `settings`).
+
+**Calorie estimates** live in `src/lib/energy.ts` (pure, tested): ACSM
+walking/running equations when distance (and incline) are known, otherwise
+Compendium METs by kind × intensity; lifting = `LIFTING_MET` × kg × counted
+minutes (start → last set + grace, capped, never past Finish). All gross.
+Needs `bodyWeightKg` from Settings; nothing is shown until it's set. Shown on
+Session header, Cardio rows + 7-day total, Calendar items + day total.
 
 - Engine (`src/lib/progression.ts`): RIR ramp, per-muscle volume rule, deload,
   load suggestion, week feedback aggregation, set distribution, MRV revision.

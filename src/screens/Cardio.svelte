@@ -5,10 +5,22 @@
   import { db } from "../db";
   import { cardioLast7Days, deleteCardio, listCardio } from "../db/cardio";
   import { CARDIO_INTENSITY_LABELS, type CardioSession } from "../db/schema";
+  import { getSetting } from "../db/settings";
+  import { cardioEnergy } from "../lib/energy";
+  import { dayKey } from "../lib/dates";
 
   const rows = liveQuery(() => listCardio(db));
   const week = liveQuery(() => cardioLast7Days(db));
+  const bodyWeight = liveQuery(() => getSetting(db, "bodyWeightKg"));
   let showForm = $state(false);
+
+  const kcalOf = (r: CardioSession) => ($bodyWeight === undefined ? null : cardioEnergy(r, $bodyWeight).kcal);
+  const weekKcal = $derived.by(() => {
+    if ($bodyWeight === undefined || !$rows) return null;
+    const start = dayKey(new Date(Date.now() - 6 * 86_400_000));
+    const end = dayKey(new Date());
+    return $rows.filter((r) => r.date >= start && r.date <= end).reduce((n, r) => n + cardioEnergy(r, $bodyWeight!).kcal, 0);
+  });
 
   const fmtDate = (iso: string) =>
     new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
@@ -27,7 +39,10 @@
       <div><div class="big">{$week.sessions}</div><div class="muted small">sessions</div></div>
       <div><div class="big">{$week.minutes}</div><div class="muted small">minutes</div></div>
       <div><div class="big">{$week.km}</div><div class="muted small">km</div></div>
-      <div class="muted small" style="align-self:flex-start">last 7 days</div>
+      {#if weekKcal !== null}
+        <div><div class="big">{weekKcal}</div><div class="muted small">kcal</div></div>
+      {/if}
+      <div class="muted small" style="align-self:flex-start">7 days</div>
     </section>
   {/if}
 
@@ -42,7 +57,7 @@
           <div class="grow">
             <strong>{r.kind}</strong> <span class="muted">· {fmtDate(r.date)}</span>
             <div class="small">
-              {r.durationMin} min{r.distanceKm ? ` · ${r.distanceKm} km` : ""}{r.inclinePct !== undefined ? ` · ${r.inclinePct}% incline` : ""} · {CARDIO_INTENSITY_LABELS[r.intensity].toLowerCase()}
+              {r.durationMin} min{r.distanceKm ? ` · ${r.distanceKm} km` : ""}{r.inclinePct !== undefined ? ` · ${r.inclinePct}% incline` : ""} · {CARDIO_INTENSITY_LABELS[r.intensity].toLowerCase()}{kcalOf(r) !== null ? ` · ~${kcalOf(r)} kcal` : ""}
             </div>
             {#if r.notes}<div class="small muted">{r.notes}</div>{/if}
           </div>

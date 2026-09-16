@@ -7,6 +7,8 @@
   import { liveQuery } from "dexie";
   import { db } from "../db";
   import { exportBackup, importBackup, parseBackup, serializeBackup } from "../db/backup";
+  import { BODY_WEIGHT_LIMITS, getSetting, setBodyWeightKg } from "../db/settings";
+  import Stepper from "../components/Stepper.svelte";
 
 
   const counts = liveQuery(async () => ({
@@ -19,6 +21,27 @@
   let message = $state("");
   let error = $state("");
   let busy = $state(false);
+
+  // Body weight: edit locally, save on tap. Seeded from the stored value once.
+  const storedWeight = liveQuery(() => getSetting(db, "bodyWeightKg"));
+  let weight = $state(80);
+  let weightSeeded = $state(false);
+  let weightMsg = $state("");
+  $effect(() => {
+    if (!weightSeeded && $storedWeight !== undefined) {
+      weight = $storedWeight;
+      weightSeeded = true;
+    }
+  });
+  async function saveWeight() {
+    weightMsg = "";
+    try {
+      await setBodyWeightKg(db, weight);
+      weightMsg = "Saved.";
+    } catch (e) {
+      weightMsg = (e as Error).message;
+    }
+  }
 
   async function doExport() {
     error = message = "";
@@ -74,6 +97,14 @@
 
 <div class="page stack">
   <h1>Settings</h1>
+
+  <section class="card stack">
+    <h3>You</h3>
+    <Stepper label="Body weight (kg)" bind:value={weight} min={BODY_WEIGHT_LIMITS.min} max={BODY_WEIGHT_LIMITS.max} step={0.5} />
+    <p class="small muted">Used to estimate calories for sessions and cardio. {$storedWeight === undefined ? "Not set yet — no estimates until it is." : `Currently ${$storedWeight} kg.`}</p>
+    <button type="button" class="btn block" onclick={saveWeight} disabled={$storedWeight === weight}>Save body weight</button>
+    {#if weightMsg}<p class="small">{weightMsg}</p>{/if}
+  </section>
 
   <section class="card stack">
     <h3>Backup</h3>

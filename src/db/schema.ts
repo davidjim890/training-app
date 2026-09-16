@@ -178,3 +178,18 @@ export interface CardioSession {
   /** ISO datetime when the row was written. */
   loggedAt: string;
 }
+
+// ---------------------------------------------------------------------------
+// Settings — small key/value pairs (schema v3)
+// ---------------------------------------------------------------------------
+
+export interface SettingRecord {
+  key: string;
+  value: unknown;
+  updatedAt: string;
+}
+
+/** Typed keys. Add here, not as loose strings. */
+export interface Settings {
+  bodyWeightKg: number;
+}

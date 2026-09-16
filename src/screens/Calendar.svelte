@@ -8,6 +8,8 @@
   import { monthActivity, type DayActivity } from "../db/calendar";
   import { CARDIO_INTENSITY_LABELS } from "../db/schema";
   import { currentBlockSummary } from "../db/sessions";
+  import { getSetting } from "../db/settings";
+  import { cardioEnergy, liftingEnergy } from "../lib/energy";
   import { addMonths, dayKey, monthGrid, monthLabel, WEEKDAY_LABELS } from "../lib/dates";
 
   let {
@@ -35,6 +37,15 @@
   const inThisMonth = $derived(selected.startsWith(`${year}-${String(month).padStart(2, "0")}`));
 
   const block = liveQuery(() => currentBlockSummary(db));
+  const bodyWeight = liveQuery(() => getSetting(db, "bodyWeightKg"));
+
+  const liftKcal = (durationMin: number | null) =>
+    $bodyWeight === undefined || durationMin === null ? null : liftingEnergy(durationMin, $bodyWeight).kcal;
+  const cardioKcal = (c: DayActivity["cardio"][number]) => ($bodyWeight === undefined ? null : cardioEnergy(c, $bodyWeight).kcal);
+  const dayKcal = $derived.by(() => {
+    if (!day || $bodyWeight === undefined) return null;
+    return day.lifting.reduce((n, l) => n + (liftKcal(l.durationMin) ?? 0), 0) + day.cardio.reduce((n, c) => n + (cardioKcal(c) ?? 0), 0);
+  });
 
   function shift(delta: number) {
     ({ year, month } = addMonths(year, month, delta));
@@ -127,7 +138,10 @@
     </section>
   {/if}
 
-  <h3>{fmtSelected(selected)}</h3>
+  <div class="row between">
+    <h3>{fmtSelected(selected)}</h3>
+    {#if dayKcal}<span class="muted small">~{dayKcal} kcal</span>{/if}
+  </div>
   {#if !day}
     <div class="card"><p class="muted">Nothing logged.</p></div>
   {:else}
@@ -136,7 +150,7 @@
         <button type="button" class="btn" onclick={() => onOpenSession(l.sessionId, l.mesocycleId)}>
           <span>
             <strong>{l.dayName}</strong> <span class="muted">· {l.blockName}</span>
-            <span class="muted small" style="display:block">Week {l.weekNum} · {l.setsLogged} set{l.setsLogged === 1 ? "" : "s"}{l.status === "in_progress" ? " · in progress" : ""}</span>
+            <span class="muted small" style="display:block">Week {l.weekNum} · {l.setsLogged} set{l.setsLogged === 1 ? "" : "s"}{l.durationMin !== null ? ` · ${Math.round(l.durationMin)} min` : ""}{liftKcal(l.durationMin) !== null ? ` · ~${liftKcal(l.durationMin)} kcal` : ""}{l.status === "in_progress" ? " · in progress" : ""}</span>
           </span>
           <span class="dot lift inline"></span>
         </button>
@@ -146,7 +160,7 @@
           <span>
             <strong>{c.kind}</strong>
             <span class="muted small" style="display:block">
-              {c.durationMin} min{c.distanceKm ? ` · ${c.distanceKm} km` : ""}{c.inclinePct !== undefined ? ` · ${c.inclinePct}% incline` : ""} · {CARDIO_INTENSITY_LABELS[c.intensity].toLowerCase()}
+              {c.durationMin} min{c.distanceKm ? ` · ${c.distanceKm} km` : ""}{c.inclinePct !== undefined ? ` · ${c.inclinePct}% incline` : ""} · {CARDIO_INTENSITY_LABELS[c.intensity].toLowerCase()}{cardioKcal(c) !== null ? ` · ~${cardioKcal(c)} kcal` : ""}
             </span>
           </span>
           <span class="dot cardio inline"></span>

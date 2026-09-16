@@ -35,7 +35,7 @@ describe("schema v2 migration", () => {
     const upgraded = new TrainingDb(name);
     try {
       await upgraded.open();
-      expect(upgraded.verno).toBe(2);
+      expect(upgraded.verno).toBe(3);
       expect((await upgraded.mesocycles.toArray())[0].name).toBe("Old block");
       expect(await upgraded.exercises.count()).toBe(1); // populate does NOT re-run on upgrade
       await upgraded.cardioSessions.add({ date: "2026-09-10", kind: "run", durationMin: 30, intensity: 1, loggedAt: "x" });
@@ -45,9 +45,9 @@ describe("schema v2 migration", () => {
     }
   });
 
-  it("a fresh database is v2 with the cardio table and the seed", async () => {
+  it("a fresh database is v3 with the cardio table and the seed", async () => {
     await db.open();
-    expect(db.verno).toBe(2);
+    expect(db.verno).toBe(3);
     expect(db.tables.map((t) => t.name)).toContain("cardioSessions");
     expect(await db.exercises.count()).toBeGreaterThan(0);
   });

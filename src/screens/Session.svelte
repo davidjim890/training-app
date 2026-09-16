@@ -12,7 +12,9 @@
   import { db } from "../db";
   import { dismissPreFeedback, feedbackStage, getSessionFeedback, musclesInSession, savePostSessionFeedback, savePreSessionFeedback } from "../db/feedback";
   import { completeSession, deleteSet, getSessionView, logSet, swapExercise, topSet, type SessionExerciseView } from "../db/sessions";
+  import { liftingEnergy, liftingSessionMinutes } from "../lib/energy";
   import { PLATE_INCREMENT, isDeloadWeek, suggestLoad } from "../lib/progression";
+  import { getSetting } from "../db/settings";
 
   let { sessionId, onBack }: { sessionId: number; onBack: () => void } = $props();
 
@@ -112,6 +114,17 @@
   }
 
   const fmt = (s: { weight: number; reps: number; actualRir: number }) => `${s.weight} × ${s.reps} @ ${s.actualRir}`;
+
+  const bodyWeight = liveQuery(() => getSetting(db, "bodyWeightKg"));
+  const energy = $derived.by(() => {
+    if (!$view || $bodyWeight === undefined) return null;
+    const minutes = liftingSessionMinutes({
+      startedAt: $view.session.startedAt,
+      completedAt: $view.session.completedAt,
+      setCompletedAts: $view.exercises.flatMap((e) => e.sets.map((s) => s.completedAt)),
+    });
+    return minutes === null ? null : { minutes: Math.round(minutes), kcal: liftingEnergy(minutes, $bodyWeight).kcal };
+  });
   const totalLogged = $derived(($view?.exercises ?? []).reduce((n, ex) => n + ex.sets.length, 0));
 </script>
 
@@ -128,7 +141,12 @@
   {#if !$view}
     <p class="muted">Loading…</p>
   {:else}
-    <h1>{$view.day.name}</h1>
+    <div class="row between">
+      <h1>{$view.day.name}</h1>
+      {#if energy}
+        <span class="muted small tabular">{energy.minutes} min · <strong>~{energy.kcal} kcal</strong></span>
+      {/if}
+    </div>
     {#if $view.session.status === "completed"}
       <p class="muted small">Completed. You can still edit sets.</p>
     {/if}
@@ -225,6 +243,7 @@
 
 <style>
   .rationale { border-left: 3px solid var(--accent); padding-left: 8px; }
+  .tabular { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .swap { align-self: flex-start; min-height: 36px; padding: 4px 8px; margin-top: -4px; color: var(--muted); font-weight: 500; }
   .target { text-align: right; }
   .big { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }

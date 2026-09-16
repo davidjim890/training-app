@@ -25,6 +25,7 @@ import type {
   MesocycleDayExercise,
   MuscleFeedbackRecord,
   Session,
+  SettingRecord,
   SessionExercise,
   VolumeLandmarkRecord,
   WorkSet,
@@ -41,6 +42,7 @@ export class TrainingDb extends Dexie {
   muscleFeedback!: EntityTable<MuscleFeedbackRecord, "id">;
   volumeLandmarks!: EntityTable<VolumeLandmarkRecord, "muscleGroup">;
   cardioSessions!: EntityTable<CardioSession, "id">;
+  settings!: EntityTable<SettingRecord, "key">;
 
   constructor(name = "training") {
     super(name);
@@ -64,6 +66,11 @@ export class TrainingDb extends Dexie {
     // carries the v1 tables forward unchanged.
     this.version(2).stores({
       cardioSessions: "++id, date, kind",
+    });
+
+    // v3: key/value settings (body weight for energy estimates).
+    this.version(3).stores({
+      settings: "key",
     });
 
     // Fires exactly once, when the database is first created on a device.

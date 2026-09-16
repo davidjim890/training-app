@@ -3,6 +3,7 @@
 // What happened on each day of a month: lifting sessions and cardio entries.
 
 import { dayKey, monthBounds } from "../lib/dates";
+import { liftingSessionMinutes } from "../lib/energy";
 import type { TrainingDb } from "./index";
 import type { CardioSession, SessionStatus } from "./schema";
 
@@ -14,6 +15,8 @@ export interface LiftingActivity {
   weekNum: number;
   status: SessionStatus;
   setsLogged: number;
+  /** Counted minutes (see `liftingSessionMinutes`); null if nothing logged. */
+  durationMin: number | null;
 }
 
 export interface DayActivity {
@@ -42,9 +45,11 @@ export async function monthActivity(db: TrainingDb, year: number, month: number)
     const slots = await db.sessionExercises.where("sessionId").anyOf(sessions.map((s) => s.id)).toArray();
     const slotToSession = new Map(slots.map((s) => [s.id, s.sessionId]));
     const setsBySession = new Map<number, number>();
+    const setTimesBySession = new Map<number, string[]>();
     for (const set of await db.sets.where("sessionExerciseId").anyOf(slots.map((s) => s.id)).toArray()) {
       const sid = slotToSession.get(set.sessionExerciseId)!;
       setsBySession.set(sid, (setsBySession.get(sid) ?? 0) + 1);
+      setTimesBySession.set(sid, [...(setTimesBySession.get(sid) ?? []), set.completedAt]);
     }
     for (const s of sessions.sort((a, b) => a.startedAt!.localeCompare(b.startedAt!))) {
       bucket(dayKey(s.startedAt!)).lifting.push({
@@ -55,6 +60,7 @@ export async function monthActivity(db: TrainingDb, year: number, month: number)
         weekNum: s.weekNum,
         status: s.status,
         setsLogged: setsBySession.get(s.id) ?? 0,
+        durationMin: liftingSessionMinutes({ startedAt: s.startedAt, completedAt: s.completedAt, setCompletedAts: setTimesBySession.get(s.id) ?? [] }),
       });
     }
   }
